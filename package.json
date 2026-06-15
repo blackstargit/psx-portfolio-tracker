@@ -35,6 +35,7 @@
     "clsx": "^2.1.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "supabase": "^2.106.0",
     "tailwind-merge": "^3.6.0",
     "tailwindcss": "^4",
     "typescript": "^5"

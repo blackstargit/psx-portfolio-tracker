@@ -1,115 +1,105 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
-export interface Database {
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
   public: {
     Tables: {
-      sectors: {
+      dividends: {
         Row: {
+          amount_per_share: number
+          created_at: string | null
+          dividend_type: string
+          ex_date: string
           id: string
-          name: string
-          allocation_pct: number
-          notes: string
-          display_order: number
-          created_at: string
-          updated_at: string
+          notes: string | null
+          payment_date: string | null
+          source: string
+          stock_id: string
+          updated_at: string | null
         }
         Insert: {
+          amount_per_share: number
+          created_at?: string | null
+          dividend_type?: string
+          ex_date: string
           id?: string
-          name: string
-          allocation_pct?: number
-          notes?: string
-          display_order?: number
-          created_at?: string
-          updated_at?: string
+          notes?: string | null
+          payment_date?: string | null
+          source?: string
+          stock_id: string
+          updated_at?: string | null
         }
         Update: {
+          amount_per_share?: number
+          created_at?: string | null
+          dividend_type?: string
+          ex_date?: string
           id?: string
-          name?: string
-          allocation_pct?: number
-          notes?: string
-          display_order?: number
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      stocks: {
-        Row: {
-          id: string
-          symbol: string
-          name: string
-          sector_id: string
-          notes: string
-          is_active: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          symbol: string
-          name: string
-          sector_id: string
-          notes?: string
-          is_active?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          symbol?: string
-          name?: string
-          sector_id?: string
-          notes?: string
-          is_active?: boolean
-          updated_at?: string
+          notes?: string | null
+          payment_date?: string | null
+          source?: string
+          stock_id?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "stocks_sector_id_fkey"
-            columns: ["sector_id"]
+            foreignKeyName: "dividends_stock_id_fkey"
+            columns: ["stock_id"]
             isOneToOne: false
-            referencedRelation: "sectors"
+            referencedRelation: "stocks"
             referencedColumns: ["id"]
           },
         ]
       }
       holdings: {
         Row: {
-          id: string
-          stock_id: string
           buy_date: string
           buy_price: number
+          created_at: string | null
+          id: string
+          is_sold: boolean | null
+          notes: string | null
           quantity: number
-          notes: string
-          is_sold: boolean
           sell_date: string | null
           sell_price: number | null
-          created_at: string
-          updated_at: string
+          stock_id: string
+          updated_at: string | null
         }
         Insert: {
-          id?: string
-          stock_id: string
           buy_date: string
           buy_price: number
+          created_at?: string | null
+          id?: string
+          is_sold?: boolean | null
+          notes?: string | null
           quantity: number
-          notes?: string
-          is_sold?: boolean
           sell_date?: string | null
           sell_price?: number | null
-          created_at?: string
-          updated_at?: string
+          stock_id: string
+          updated_at?: string | null
         }
         Update: {
-          id?: string
-          stock_id?: string
           buy_date?: string
           buy_price?: number
+          created_at?: string | null
+          id?: string
+          is_sold?: boolean | null
+          notes?: string | null
           quantity?: number
-          notes?: string
-          is_sold?: boolean
           sell_date?: string | null
           sell_price?: number | null
-          updated_at?: string
+          stock_id?: string
+          updated_at?: string | null
         }
         Relationships: [
           {
@@ -123,69 +113,76 @@ export interface Database {
       }
       monthly_plans: {
         Row: {
+          budget: number
+          created_at: string | null
           id: string
           month: string
-          budget: number
-          status: 'draft' | 'finalized'
-          notes: string
-          created_at: string
-          updated_at: string
+          notes: string | null
+          status: string
+          updated_at: string | null
         }
         Insert: {
+          budget: number
+          created_at?: string | null
           id?: string
           month: string
-          budget: number
-          status?: 'draft' | 'finalized'
-          notes?: string
-          created_at?: string
-          updated_at?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string | null
         }
         Update: {
+          budget?: number
+          created_at?: string | null
           id?: string
           month?: string
-          budget?: number
-          status?: 'draft' | 'finalized'
-          notes?: string
-          updated_at?: string
+          notes?: string | null
+          status?: string
+          updated_at?: string | null
         }
         Relationships: []
       }
       plan_allocations: {
         Row: {
+          allocated_amount: number
+          created_at: string | null
           id: string
           plan_id: string
-          stock_id: string
-          sector_id: string
-          stock_pct_in_sector: number
-          sector_pct_snapshot: number
-          allocated_amount: number
           price_at_plan: number | null
-          shares_to_buy: number
-          stop_loss: number | null
           remaining_cash: number | null
-          created_at: string
+          sector_id: string
+          sector_pct_snapshot: number
+          shares_to_buy: number | null
+          stock_id: string
+          stock_pct_in_sector: number
+          stop_loss: number | null
         }
         Insert: {
+          allocated_amount: number
+          created_at?: string | null
           id?: string
           plan_id: string
-          stock_id: string
-          sector_id: string
-          stock_pct_in_sector: number
-          sector_pct_snapshot: number
-          allocated_amount: number
           price_at_plan?: number | null
-          shares_to_buy?: number
-          stop_loss?: number | null
           remaining_cash?: number | null
-          created_at?: string
+          sector_id: string
+          sector_pct_snapshot: number
+          shares_to_buy?: number | null
+          stock_id: string
+          stock_pct_in_sector?: number
+          stop_loss?: number | null
         }
         Update: {
-          stock_pct_in_sector?: number
           allocated_amount?: number
+          created_at?: string | null
+          id?: string
+          plan_id?: string
           price_at_plan?: number | null
-          shares_to_buy?: number
-          stop_loss?: number | null
           remaining_cash?: number | null
+          sector_id?: string
+          sector_pct_snapshot?: number
+          shares_to_buy?: number | null
+          stock_id?: string
+          stock_pct_in_sector?: number
+          stop_loss?: number | null
         }
         Relationships: [
           {
@@ -196,58 +193,14 @@ export interface Database {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "plan_allocations_stock_id_fkey"
-            columns: ["stock_id"]
-            isOneToOne: false
-            referencedRelation: "stocks"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "plan_allocations_sector_id_fkey"
             columns: ["sector_id"]
             isOneToOne: false
             referencedRelation: "sectors"
             referencedColumns: ["id"]
           },
-        ]
-      }
-      dividends: {
-        Row: {
-          id: string
-          stock_id: string
-          ex_date: string
-          payment_date: string | null
-          amount_per_share: number
-          dividend_type: 'cash' | 'bonus' | 'special'
-          source: 'yahoo' | 'manual'
-          notes: string
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          stock_id: string
-          ex_date: string
-          payment_date?: string | null
-          amount_per_share: number
-          dividend_type?: 'cash' | 'bonus' | 'special'
-          source?: 'yahoo' | 'manual'
-          notes?: string
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          ex_date?: string
-          payment_date?: string | null
-          amount_per_share?: number
-          dividend_type?: 'cash' | 'bonus' | 'special'
-          source?: 'yahoo' | 'manual'
-          notes?: string
-          updated_at?: string
-        }
-        Relationships: [
           {
-            foreignKeyName: "dividends_stock_id_fkey"
+            foreignKeyName: "plan_allocations_stock_id_fkey"
             columns: ["stock_id"]
             isOneToOne: false
             referencedRelation: "stocks"
@@ -257,40 +210,113 @@ export interface Database {
       }
       price_cache: {
         Row: {
-          id: string
-          symbol: string
-          price: number
-          currency: string
-          market_state: string
+          currency: string | null
           fetched_at: string
+          id: string
+          market_state: string | null
+          price: number
+          symbol: string
         }
         Insert: {
-          id?: string
-          symbol: string
-          price: number
-          currency?: string
-          market_state?: string
+          currency?: string | null
           fetched_at?: string
+          id?: string
+          market_state?: string | null
+          price: number
+          symbol: string
         }
         Update: {
-          price?: number
-          currency?: string
-          market_state?: string
+          currency?: string | null
           fetched_at?: string
+          id?: string
+          market_state?: string | null
+          price?: number
+          symbol?: string
         }
         Relationships: []
+      }
+      sectors: {
+        Row: {
+          allocation_pct: number
+          created_at: string | null
+          display_order: number | null
+          id: string
+          name: string
+          notes: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          allocation_pct?: number
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          name: string
+          notes?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          allocation_pct?: number
+          created_at?: string | null
+          display_order?: number | null
+          id?: string
+          name?: string
+          notes?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      stocks: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          notes: string | null
+          sector_id: string
+          symbol: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          notes?: string | null
+          sector_id: string
+          symbol: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          notes?: string | null
+          sector_id?: string
+          symbol?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stocks_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
       consolidated_holdings: {
         Row: {
-          stock_id: string
-          total_quantity: number
-          avg_buy_price: number
-          total_cost: number
-          first_buy_date: string
-          last_buy_date: string
-          lot_count: number
+          avg_buy_price: number | null
+          first_buy_date: string | null
+          last_buy_date: string | null
+          lot_count: number | null
+          stock_id: string | null
+          total_cost: number | null
+          total_quantity: number | null
         }
         Relationships: [
           {
@@ -303,8 +329,137 @@ export interface Database {
         ]
       }
     }
-    Functions: Record<string, never>
-    Enums: Record<string, never>
-    CompositeTypes: Record<string, never>
+    Functions: {
+      [_ in never]: never
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
 }
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const

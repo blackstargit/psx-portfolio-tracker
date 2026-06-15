@@ -26,7 +26,7 @@ import {
   calcRemainingCash,
   calcStopLoss,
 } from '@/lib/calculations'
-import { formatCurrency, formatPrice, monthToDate } from '@/lib/formatters'
+import { formatCurrency, formatPrice, formatMonth, monthToDate } from '@/lib/formatters'
 import type { Sector, Stock } from '@/types'
 
 interface StockSelection {
@@ -238,6 +238,137 @@ export default function NewPlanPage() {
     )
   }
 
+  if (step === 'review') {
+    const activeSectors = sectorPlans.filter((sp) => sp.selections.length > 0)
+    const totalShares = activeSectors.flatMap((sp) => {
+      const sectorAmount = calcSectorAmount(budgetNum, sp.sector.allocation_pct)
+      return sp.selections.map((sel) => {
+        const price = prices[sel.stock.symbol]?.price
+        return price ? calcSharesToBuy(calcStockAmount(sectorAmount, sel.pct), price) : 0
+      })
+    }).reduce((sum, n) => sum + n, 0)
+    const totalAllocated = activeSectors.flatMap((sp) => {
+      const sectorAmount = calcSectorAmount(budgetNum, sp.sector.allocation_pct)
+      return sp.selections.map((sel) => calcStockAmount(sectorAmount, sel.pct))
+    }).reduce((sum, n) => sum + n, 0)
+
+    return (
+      <div className="flex flex-col flex-1">
+        <Header title="New Monthly Plan — Review" />
+        <div className="p-6 space-y-6">
+          <Button variant="ghost" size="sm" onClick={() => setStep('allocate')}>
+            <ArrowLeft className="h-4 w-4 mr-1" /> Back to Allocate
+          </Button>
+
+          <Card>
+            <CardContent className="pt-4">
+              <div className="flex flex-wrap gap-6">
+                <div>
+                  <p className="text-xs text-muted-foreground">Month</p>
+                  <p className="font-semibold">{formatMonth(month)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Budget</p>
+                  <p className="font-semibold">{formatCurrency(budgetNum)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Total Allocated</p>
+                  <p className="font-semibold">{formatCurrency(totalAllocated)}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Total Shares</p>
+                  <p className="font-semibold">{totalShares}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Stocks</p>
+                  <p className="font-semibold">{activeSectors.reduce((sum, sp) => sum + sp.selections.length, 0)}</p>
+                </div>
+              </div>
+              {notes && <p className="mt-2 text-sm text-muted-foreground border-t pt-2">{notes}</p>}
+            </CardContent>
+          </Card>
+
+          {activeSectors.map((sp) => {
+            const sectorAmount = calcSectorAmount(budgetNum, sp.sector.allocation_pct)
+            return (
+              <Card key={sp.sector.id}>
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">{sp.sector.name}</CardTitle>
+                    <span className="text-sm text-muted-foreground">
+                      {sp.sector.allocation_pct}% — {formatCurrency(sectorAmount)}
+                    </span>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b text-muted-foreground">
+                          <th className="text-left pb-2">Stock</th>
+                          <th className="text-right pb-2">% of Sector</th>
+                          <th className="text-right pb-2">Amount</th>
+                          <th className="text-right pb-2">Price</th>
+                          <th className="text-right pb-2">Shares</th>
+                          <th className="text-right pb-2">Stop Loss</th>
+                          <th className="text-right pb-2">Remaining</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {sp.selections.map((sel) => {
+                          const allocAmt = calcStockAmount(sectorAmount, sel.pct)
+                          const price = prices[sel.stock.symbol]?.price
+                          const shares = price ? calcSharesToBuy(allocAmt, price) : 0
+                          const stopLoss = price ? calcStopLoss(price) : null
+                          const remaining = price ? calcRemainingCash(allocAmt, shares, price) : null
+                          return (
+                            <tr key={sel.stock.id} className="border-b last:border-0">
+                              <td className="py-2">
+                                <span className="font-mono font-semibold text-primary">
+                                  {sel.stock.symbol.replace('.KA', '')}
+                                </span>
+                                <span className="ml-2 text-xs text-muted-foreground">{sel.stock.name}</span>
+                              </td>
+                              <td className="py-2 text-right">{sel.pct}%</td>
+                              <td className="py-2 text-right font-mono">{formatCurrency(allocAmt)}</td>
+                              <td className="py-2 text-right font-mono">
+                                {price ? formatPrice(price) : <span className="text-yellow-600">—</span>}
+                              </td>
+                              <td className="py-2 text-right font-semibold">{shares}</td>
+                              <td className="py-2 text-right font-mono text-red-600">
+                                {stopLoss ? formatPrice(stopLoss) : '—'}
+                              </td>
+                              <td className="py-2 text-right font-mono text-muted-foreground">
+                                {remaining != null ? formatCurrency(remaining) : '—'}
+                              </td>
+                            </tr>
+                          )
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })}
+
+          <Separator />
+
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => handleSave('draft')} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Save as Draft
+            </Button>
+            <Button onClick={() => handleSave('finalized')} disabled={saving}>
+              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Finalize Plan
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-col flex-1">
       <Header title="New Monthly Plan — Allocate" />
@@ -365,13 +496,11 @@ export default function NewPlanPage() {
         <Separator />
 
         <div className="flex justify-end gap-3">
-          <Button variant="outline" onClick={() => handleSave('draft')} disabled={saving}>
-            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-            Save as Draft
-          </Button>
-          <Button onClick={() => handleSave('finalized')} disabled={saving || !isAllocationValid()}>
-            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
-            Finalize Plan
+          <Button
+            onClick={() => setStep('review')}
+            disabled={!isAllocationValid()}
+          >
+            Next: Review <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
         </div>
       </div>

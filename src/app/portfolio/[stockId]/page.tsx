@@ -20,7 +20,7 @@ import { formatCurrency, formatDate, formatPrice } from '@/lib/formatters'
 
 export default function StockDetailPage({ params }: { params: Promise<{ stockId: string }> }) {
   const { stockId } = use(params)
-  const { holdings, loading, deleteHolding, addHolding } = useHoldings(stockId)
+  const { holdings, loading, deleteHolding, addHolding, updateHolding, markSold } = useHoldings(stockId)
   const { stocks } = useStocks()
   const { dividends, loading: dividendsLoading } = useDividends(stockId)
   const { prices, fetchPrices } = usePrices()
@@ -90,6 +90,8 @@ export default function StockDetailPage({ params }: { params: Promise<{ stockId:
             prices={prices}
             loading={loading}
             onDelete={deleteHolding}
+            onEdit={updateHolding}
+            onMarkSold={markSold}
             showStock={false}
           />
         </div>

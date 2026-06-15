@@ -14,7 +14,7 @@ import { useSectors } from '@/hooks/use-sectors'
 import { usePrices } from '@/hooks/use-prices'
 
 export default function PortfolioPage() {
-  const { holdings, consolidated, loading, deleteHolding, addHolding } = useHoldings()
+  const { holdings, consolidated, loading, deleteHolding, addHolding, updateHolding, markSold } = useHoldings()
   const { stocks, createStock } = useStocks()
   const { sectors } = useSectors()
   const { prices, loading: pricesLoading, lastRefreshed, canRefresh, refreshAll, fetchPrices } = usePrices()
@@ -71,6 +71,8 @@ export default function PortfolioPage() {
             prices={prices}
             loading={loading}
             onDelete={deleteHolding}
+            onEdit={updateHolding}
+            onMarkSold={markSold}
           />
         ) : (
           <ConsolidatedView
