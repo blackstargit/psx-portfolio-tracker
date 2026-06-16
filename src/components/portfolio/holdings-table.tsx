@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Trash2, Edit2, DollarSign } from 'lucide-react'
 import { toast } from 'sonner'
@@ -25,8 +25,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { PnlBadge } from './pnl-badge'
+import { SortButton } from '@/components/ui/sort-button'
 import { formatCurrency, formatDate, formatNumber, formatPrice } from '@/lib/formatters'
 import { calcPnLPct, calcPnLAmount, calcCurrentValue } from '@/lib/calculations'
+import { useSort, sortRows } from '@/hooks/use-sort'
 import type { Holding, PriceMap } from '@/types'
 
 interface HoldingsTableProps {
@@ -50,6 +52,40 @@ export function HoldingsTable({
 }: HoldingsTableProps) {
   const [editingHolding, setEditingHolding] = useState<Holding | null>(null)
   const [sellingHolding, setSellingHolding] = useState<Holding | null>(null)
+  const { sort, toggle } = useSort()
+
+  const sorted = useMemo(
+    () =>
+      sortRows(holdings, sort, (h, key) => {
+        const symbol = h.stock?.symbol ?? ''
+        const cp = prices[symbol]?.price ?? null
+        switch (key) {
+          case 'stock':
+            return symbol
+          case 'sector':
+            return h.stock?.sector?.name ?? ''
+          case 'buyDate':
+            return new Date(h.buy_date).getTime()
+          case 'buyPrice':
+            return h.buy_price
+          case 'qty':
+            return h.quantity
+          case 'cost':
+            return h.buy_price * h.quantity
+          case 'currentPrice':
+            return cp
+          case 'value':
+            return cp != null ? calcCurrentValue(cp, h.quantity) : null
+          case 'pnl':
+            return cp != null ? calcPnLAmount(h.buy_price, cp, h.quantity) : null
+          case 'pnlPct':
+            return cp != null ? calcPnLPct(h.buy_price, cp) : null
+          default:
+            return null
+        }
+      }),
+    [holdings, prices, sort]
+  )
 
   if (loading) {
     return (
@@ -85,21 +121,45 @@ export function HoldingsTable({
         <Table>
           <TableHeader>
             <TableRow>
-              {showStock && <TableHead>Stock</TableHead>}
-              {showStock && <TableHead>Sector</TableHead>}
-              <TableHead>Buy Date</TableHead>
-              <TableHead className="text-right">Buy Price</TableHead>
-              <TableHead className="text-right">Qty</TableHead>
-              <TableHead className="text-right">Cost</TableHead>
-              <TableHead className="text-right">Current Price</TableHead>
-              <TableHead className="text-right">Value</TableHead>
-              <TableHead className="text-right">P&L</TableHead>
-              <TableHead className="text-right">P&L %</TableHead>
+              {showStock && (
+                <TableHead>
+                  <SortButton label="Stock" active={sort.key === 'stock'} dir={sort.dir} onClick={() => toggle('stock')} />
+                </TableHead>
+              )}
+              {showStock && (
+                <TableHead>
+                  <SortButton label="Sector" active={sort.key === 'sector'} dir={sort.dir} onClick={() => toggle('sector')} />
+                </TableHead>
+              )}
+              <TableHead>
+                <SortButton label="Buy Date" active={sort.key === 'buyDate'} dir={sort.dir} onClick={() => toggle('buyDate')} />
+              </TableHead>
+              <TableHead className="text-right">
+                <SortButton label="Buy Price" align="right" active={sort.key === 'buyPrice'} dir={sort.dir} onClick={() => toggle('buyPrice')} />
+              </TableHead>
+              <TableHead className="text-right">
+                <SortButton label="Qty" align="right" active={sort.key === 'qty'} dir={sort.dir} onClick={() => toggle('qty')} />
+              </TableHead>
+              <TableHead className="text-right">
+                <SortButton label="Cost" align="right" active={sort.key === 'cost'} dir={sort.dir} onClick={() => toggle('cost')} />
+              </TableHead>
+              <TableHead className="text-right">
+                <SortButton label="Current Price" align="right" active={sort.key === 'currentPrice'} dir={sort.dir} onClick={() => toggle('currentPrice')} />
+              </TableHead>
+              <TableHead className="text-right">
+                <SortButton label="Value" align="right" active={sort.key === 'value'} dir={sort.dir} onClick={() => toggle('value')} />
+              </TableHead>
+              <TableHead className="text-right">
+                <SortButton label="P&L" align="right" active={sort.key === 'pnl'} dir={sort.dir} onClick={() => toggle('pnl')} />
+              </TableHead>
+              <TableHead className="text-right">
+                <SortButton label="P&L %" align="right" active={sort.key === 'pnlPct'} dir={sort.dir} onClick={() => toggle('pnlPct')} />
+              </TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody>
-            {holdings.map((holding) => {
+            {sorted.map((holding) => {
               const symbol = holding.stock?.symbol ?? ''
               const priceData = prices[symbol]
               const currentPrice = priceData?.price

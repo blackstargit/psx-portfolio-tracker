@@ -1,5 +1,6 @@
 'use client'
 
+import { useMemo } from 'react'
 import Link from 'next/link'
 import {
   Table,
@@ -12,8 +13,10 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { PnlBadge } from './pnl-badge'
+import { SortButton } from '@/components/ui/sort-button'
 import { formatCurrency, formatDate, formatNumber, formatPrice } from '@/lib/formatters'
 import { calcPnLPct, calcPnLAmount, calcCurrentValue } from '@/lib/calculations'
+import { useSort, sortRows } from '@/hooks/use-sort'
 import type { ConsolidatedHolding, PriceMap } from '@/types'
 
 interface ConsolidatedViewProps {
@@ -23,6 +26,43 @@ interface ConsolidatedViewProps {
 }
 
 export function ConsolidatedView({ holdings, prices, loading }: ConsolidatedViewProps) {
+  const { sort, toggle } = useSort()
+
+  const sorted = useMemo(
+    () =>
+      sortRows(holdings, sort, (h, key) => {
+        const symbol = h.stock?.symbol ?? ''
+        const cp = prices[symbol]?.price ?? null
+        switch (key) {
+          case 'stock':
+            return symbol
+          case 'sector':
+            return h.stock?.sector?.name ?? ''
+          case 'lots':
+            return h.lot_count
+          case 'avgBuyPrice':
+            return h.avg_buy_price
+          case 'totalQty':
+            return h.total_quantity
+          case 'totalCost':
+            return h.total_cost
+          case 'currentPrice':
+            return cp
+          case 'currentValue':
+            return cp != null ? calcCurrentValue(cp, h.total_quantity) : null
+          case 'pnl':
+            return cp != null ? calcPnLAmount(h.avg_buy_price, cp, h.total_quantity) : null
+          case 'pnlPct':
+            return cp != null ? calcPnLPct(h.avg_buy_price, cp) : null
+          case 'firstBuy':
+            return new Date(h.first_buy_date).getTime()
+          default:
+            return null
+        }
+      }),
+    [holdings, prices, sort]
+  )
+
   if (loading) {
     return (
       <div className="space-y-2">
@@ -46,21 +86,43 @@ export function ConsolidatedView({ holdings, prices, loading }: ConsolidatedView
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Stock</TableHead>
-            <TableHead>Sector</TableHead>
-            <TableHead className="text-right">Lots</TableHead>
-            <TableHead className="text-right">Avg Buy Price</TableHead>
-            <TableHead className="text-right">Total Qty</TableHead>
-            <TableHead className="text-right">Total Cost</TableHead>
-            <TableHead className="text-right">Current Price</TableHead>
-            <TableHead className="text-right">Current Value</TableHead>
-            <TableHead className="text-right">P&L</TableHead>
-            <TableHead className="text-right">P&L %</TableHead>
-            <TableHead className="text-center">First / Last Buy</TableHead>
+            <TableHead>
+              <SortButton label="Stock" active={sort.key === 'stock'} dir={sort.dir} onClick={() => toggle('stock')} />
+            </TableHead>
+            <TableHead>
+              <SortButton label="Sector" active={sort.key === 'sector'} dir={sort.dir} onClick={() => toggle('sector')} />
+            </TableHead>
+            <TableHead className="text-right">
+              <SortButton label="Lots" align="right" active={sort.key === 'lots'} dir={sort.dir} onClick={() => toggle('lots')} />
+            </TableHead>
+            <TableHead className="text-right">
+              <SortButton label="Avg Buy Price" align="right" active={sort.key === 'avgBuyPrice'} dir={sort.dir} onClick={() => toggle('avgBuyPrice')} />
+            </TableHead>
+            <TableHead className="text-right">
+              <SortButton label="Total Qty" align="right" active={sort.key === 'totalQty'} dir={sort.dir} onClick={() => toggle('totalQty')} />
+            </TableHead>
+            <TableHead className="text-right">
+              <SortButton label="Total Cost" align="right" active={sort.key === 'totalCost'} dir={sort.dir} onClick={() => toggle('totalCost')} />
+            </TableHead>
+            <TableHead className="text-right">
+              <SortButton label="Current Price" align="right" active={sort.key === 'currentPrice'} dir={sort.dir} onClick={() => toggle('currentPrice')} />
+            </TableHead>
+            <TableHead className="text-right">
+              <SortButton label="Current Value" align="right" active={sort.key === 'currentValue'} dir={sort.dir} onClick={() => toggle('currentValue')} />
+            </TableHead>
+            <TableHead className="text-right">
+              <SortButton label="P&L" align="right" active={sort.key === 'pnl'} dir={sort.dir} onClick={() => toggle('pnl')} />
+            </TableHead>
+            <TableHead className="text-right">
+              <SortButton label="P&L %" align="right" active={sort.key === 'pnlPct'} dir={sort.dir} onClick={() => toggle('pnlPct')} />
+            </TableHead>
+            <TableHead className="text-center">
+              <SortButton label="First / Last Buy" align="center" active={sort.key === 'firstBuy'} dir={sort.dir} onClick={() => toggle('firstBuy')} />
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {holdings.map((h) => {
+          {sorted.map((h) => {
             const symbol = h.stock?.symbol ?? ''
             const priceData = prices[symbol]
             const currentPrice = priceData?.price

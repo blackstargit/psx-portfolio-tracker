@@ -1,18 +1,20 @@
 'use client'
 
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Plus, Edit2, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { SortButton } from '@/components/ui/sort-button'
 import { Header } from '@/components/layout/header'
 import { SectorForm } from '@/components/sectors/sector-form'
 import { AllocationBar } from '@/components/sectors/allocation-bar'
 import { useStocks } from '@/hooks/use-stocks'
 import { useSectors } from '@/hooks/use-sectors'
 import { useHoldings } from '@/hooks/use-holdings'
+import { useSort, sortRows } from '@/hooks/use-sort'
 import type { Sector, Stock } from '@/types'
 
 export default function SectorsPage() {
@@ -22,6 +24,24 @@ export default function SectorsPage() {
   const [formOpen, setFormOpen] = useState(false)
   const [editingSector, setEditingSector] = useState<Sector | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const { sort, toggle } = useSort()
+
+  const sortedStocks = useMemo(
+    () =>
+      sortRows(stocks, sort, (s, key) => {
+        switch (key) {
+          case 'symbol':
+            return s.symbol
+          case 'name':
+            return s.name
+          case 'sector':
+            return s.sector?.name ?? ''
+          default:
+            return null
+        }
+      }),
+    [stocks, sort]
+  )
 
   const handleSave = async (values: { name: string; allocation_pct: number; notes: string }) => {
     if (editingSector) {
@@ -179,14 +199,20 @@ export default function SectorsPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-muted/50">
-                    <th className="text-left px-4 py-2">Symbol</th>
-                    <th className="text-left px-4 py-2">Name</th>
-                    <th className="text-left px-4 py-2">Sector</th>
+                    <th className="text-left px-4 py-2">
+                      <SortButton label="Symbol" active={sort.key === 'symbol'} dir={sort.dir} onClick={() => toggle('symbol')} />
+                    </th>
+                    <th className="text-left px-4 py-2">
+                      <SortButton label="Name" active={sort.key === 'name'} dir={sort.dir} onClick={() => toggle('name')} />
+                    </th>
+                    <th className="text-left px-4 py-2">
+                      <SortButton label="Sector" active={sort.key === 'sector'} dir={sort.dir} onClick={() => toggle('sector')} />
+                    </th>
                     <th className="text-right px-4 py-2 w-12"><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {stocks.map((s) => (
+                  {sortedStocks.map((s) => (
                     <tr key={s.id} className="border-b last:border-0">
                       <td className="px-4 py-2 font-mono font-semibold text-primary">{s.symbol.replace('.KA', '')}</td>
                       <td className="px-4 py-2">{s.name}</td>
