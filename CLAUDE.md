@@ -41,7 +41,7 @@ Both existing dynamic routes (`/portfolio/[stockId]` and `/planner/[planId]`) al
 - **Data layer**: Custom React hooks in `src/hooks/` call Supabase directly from the browser using the anon client.
 - **API routes** scrape PSX terminal data directly in **TypeScript** (server-side, Node runtime). No Python, no `child_process`, no third-party data package — the scraping/refinement logic was ported from the reference `psxdata` library into `src/lib/psx/` (see `foreign-repos/` for the originals).
 - **Price cache**: Two-level — in-memory module cache in `src/lib/psx/` (15-min TTL, mirrors the reference lib) + Supabase `price_cache` table for cross-request persistence.
-- **Currency**: PKR (₨). All amounts in rupees. PSX symbols use `.KA` suffix (e.g. `HBL.KA`). The scraper strips `.KA` for PSX lookups and re-applies it when keying the price map the frontend reads.
+- **Currency**: PKR (₨). All amounts in rupees. **Symbols are stored plain** (e.g. `HBL`, `LUCK`) in the `stocks` table, the `price_cache` table, and the price map the frontend reads — there is **no `.KA` suffix**. (`.KA` was a Yahoo Finance/Karachi convention; it is dead now that we scrape PSX, which uses plain symbols.) `fetchQuotes` keys its result by the exact symbol requested, and the frontend looks prices up with `prices[holding.stock.symbol]`, so the request/lookup forms must match. The leftover `PSX_SYMBOL_SUFFIX = '.KA'` constant and the scattered `.replace('.KA', '')` display calls are harmless no-ops on plain symbols.
 - **Runtime deps**: `cheerio` (HTML table parsing) + global `fetch`. No Python required.
 - **PSX data source**: `https://dps.psx.com.pk` — plain AJAX endpoints fetched with `fetch` + parsed with `cheerio`. No browser/Playwright needed.
   - Live prices: `GET /screener` (full table, ~735 symbols incl. inactive scrips like ENGRO; `price` column; filtered in-memory, cached 15 min). Note: the `/trading-board/REG/main` board was rejected — it omits ~240 symbols (no ENGRO) and has no current-price column.
@@ -159,7 +159,7 @@ Supabase project: `ooybauabapkkwcoyvybg` (URL: `https://ooybauabapkkwcoyvybg.sup
 | Table | Purpose | Key columns |
 |---|---|---|
 | `sectors` | Sector buckets with allocation % | `name`, `allocation_pct` (must sum to 100), `display_order` |
-| `stocks` | Tracked PSX stocks | `symbol` (e.g. `HBL.KA`), `name`, `sector_id`, `is_active` |
+| `stocks` | Tracked PSX stocks | `symbol` (plain, e.g. `HBL`), `name`, `sector_id`, `is_active` |
 | `holdings` | Per-lot buy entries | `stock_id`, `buy_date`, `buy_price`, `quantity`, `is_sold`, `sell_date`, `sell_price` |
 | `monthly_plans` | Monthly investment plans | `month` (first day, e.g. `2026-07-01`), `budget`, `status` (`draft`\|`finalized`) |
 | `plan_allocations` | Per-stock allocations within a plan | `plan_id`, `stock_id`, `sector_id`, `stock_pct_in_sector`, `allocated_amount`, `shares_to_buy`, `stop_loss`, `remaining_cash` |
@@ -236,7 +236,7 @@ All tables have `created_at` and `updated_at` (auto-updated via trigger) except 
 - **Dividends never had per-share amounts from PSX** even when rows were available — `amount_per_share` must be entered manually.
 
 ### Current state
-Quotes and search are TS-native and verified against live PSX. All 4 API routes consume the new layer with unchanged contracts (price map keyed by `.KA`, `price_cache.symbol` plain).
+Quotes and search are TS-native and verified against live PSX. All 4 API routes consume the new layer; the price map and `price_cache.symbol` are both keyed by the **plain** symbol (the `.KA` keying was a bug — see Architecture/Currency).
 
 ### Next task
 1. **Dividends data endpoint** — open `https://dps.psx.com.pk/financial-reports-list` in a browser, watch the Network tab for the XHR that populates `#reportsTable`, and point `dividends.ts` at that endpoint. (Optional — manual entry is a working fallback.)

@@ -94,9 +94,10 @@ export async function fetchQuotes(symbols: string[]): Promise<PSXQuoteResult> {
       fetched_at: fetchedAt,
       stale: false,
     }
-    // Key by `.KA` form so the frontend (which holds DB symbols like "HBL.KA")
-    // can look prices up directly.
-    result.prices[`${sym}.KA`] = entry
+    // Key by the exact symbol the caller requested so the frontend can look the
+    // price up with the same string it holds (the DB stores plain symbols like
+    // "HBL", not "HBL.KA"). `entry.symbol` stays plain for the price_cache table.
+    result.prices[requested] = entry
   }
 
   return result
