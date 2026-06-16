@@ -297,7 +297,12 @@ function DividendForm({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1">
             <Label>Stock</Label>
-            <Select value={stockId} onValueChange={(v) => setStockId(v ?? '')} required>
+            <Select
+              items={stocks.map((s) => ({ value: s.id, label: `${s.symbol.replace('.KA', '')} — ${s.name}` }))}
+              value={stockId}
+              onValueChange={(v) => setStockId(v ?? '')}
+              required
+            >
               <SelectTrigger><SelectValue placeholder="Select stock" /></SelectTrigger>
               <SelectContent>
                 {stocks.map((s) => (
@@ -325,7 +330,15 @@ function DividendForm({
             </div>
             <div className="space-y-1">
               <Label>Type</Label>
-              <Select value={type} onValueChange={(v) => setType(v as 'cash' | 'bonus' | 'special')}>
+              <Select
+                items={[
+                  { value: 'cash', label: 'Cash' },
+                  { value: 'bonus', label: 'Bonus' },
+                  { value: 'special', label: 'Special' },
+                ]}
+                value={type}
+                onValueChange={(v) => setType(v as 'cash' | 'bonus' | 'special')}
+              >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="cash">Cash</SelectItem>

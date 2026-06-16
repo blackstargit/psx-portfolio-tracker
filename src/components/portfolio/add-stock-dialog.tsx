@@ -89,7 +89,12 @@ export function AddStockDialog({ sectors, onAdd }: AddStockDialogProps) {
               </div>
               <div className="space-y-1">
                 <Label>Sector</Label>
-                <Select value={sectorId} onValueChange={(v) => setSectorId(v ?? '')} required>
+                <Select
+                  items={sectors.map((s) => ({ value: s.id, label: s.name }))}
+                  value={sectorId}
+                  onValueChange={(v) => setSectorId(v ?? '')}
+                  required
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Select sector" />
                   </SelectTrigger>

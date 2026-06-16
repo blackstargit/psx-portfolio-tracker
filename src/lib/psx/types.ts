@@ -1,4 +1,5 @@
-// Types matching the Python script output (src/lib/psx/*.py)
+// Public result types for the PSX scraper layer (src/lib/psx/*.ts).
+// Mirror the shapes the API routes + frontend already consume.
 
 export interface PSXPriceEntry {
   symbol: string

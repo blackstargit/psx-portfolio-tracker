@@ -101,7 +101,12 @@ export function AddHoldingDialog({ stocks, onAdd, defaultStockId }: AddHoldingDi
           {!defaultStockId && (
             <div className="space-y-1">
               <Label htmlFor="stock">Stock</Label>
-              <Select value={stockId} onValueChange={(v) => setStockId(v ?? '')} required>
+              <Select
+                items={stocks.map((s) => ({ value: s.id, label: `${s.symbol.replace('.KA', '')} — ${s.name}` }))}
+                value={stockId}
+                onValueChange={(v) => setStockId(v ?? '')}
+                required
+              >
                 <SelectTrigger id="stock">
                   <SelectValue placeholder="Select stock" />
                 </SelectTrigger>

@@ -12,11 +12,13 @@ import { SectorForm } from '@/components/sectors/sector-form'
 import { AllocationBar } from '@/components/sectors/allocation-bar'
 import { useStocks } from '@/hooks/use-stocks'
 import { useSectors } from '@/hooks/use-sectors'
-import type { Sector } from '@/types'
+import { useHoldings } from '@/hooks/use-holdings'
+import type { Sector, Stock } from '@/types'
 
 export default function SectorsPage() {
   const { sectors, loading, totalAllocation, createSector, updateSector, deleteSector } = useSectors()
-  const { stocks } = useStocks()
+  const { stocks, deleteStock } = useStocks()
+  const { holdings } = useHoldings()
   const [formOpen, setFormOpen] = useState(false)
   const [editingSector, setEditingSector] = useState<Sector | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -41,6 +43,22 @@ export default function SectorsPage() {
       toast.success('Sector deleted')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to delete')
+    }
+  }
+
+  const handleDeleteStock = async (stock: Stock) => {
+    const sym = stock.symbol.replace('.KA', '')
+    const count = holdings.filter((h) => h.stock_id === stock.id).length
+    const warning =
+      count > 0
+        ? `Delete ${sym}? This will also permanently remove ${count} holding lot(s) and all dividend history for this stock.`
+        : `Delete ${sym}? This will remove it from tracked stocks, along with any dividend history.`
+    if (!confirm(warning)) return
+    try {
+      await deleteStock(stock.id)
+      toast.success(`${sym} deleted`)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete stock')
     }
   }
 
@@ -164,6 +182,7 @@ export default function SectorsPage() {
                     <th className="text-left px-4 py-2">Symbol</th>
                     <th className="text-left px-4 py-2">Name</th>
                     <th className="text-left px-4 py-2">Sector</th>
+                    <th className="text-right px-4 py-2 w-12"><span className="sr-only">Actions</span></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -173,6 +192,17 @@ export default function SectorsPage() {
                       <td className="px-4 py-2">{s.name}</td>
                       <td className="px-4 py-2">
                         <Badge variant="outline">{s.sector?.name ?? '—'}</Badge>
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive"
+                          onClick={() => handleDeleteStock(s)}
+                          aria-label={`Delete ${s.symbol.replace('.KA', '')}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
                       </td>
                     </tr>
                   ))}

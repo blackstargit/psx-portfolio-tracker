@@ -39,14 +39,14 @@ Both existing dynamic routes (`/portfolio/[stockId]` and `/planner/[planId]`) al
 
 - **All pages are `'use client'`** — no server-side rendering or RSC data fetching. Data loads in the browser via custom hooks.
 - **Data layer**: Custom React hooks in `src/hooks/` call Supabase directly from the browser using the anon client.
-- **API routes** proxy PSX terminal scraping via Python `psxdata` library (server-side). Python scripts are called via `child_process.spawn` from TypeScript wrappers.
-- **Price cache**: Two-level — psxdata disk cache (`~/.psxdata/cache/`) + Supabase `price_cache` table for cross-request persistence. psxdata caches live data for 15 min.
-- **Currency**: PKR (₨). All amounts in rupees. PSX symbols use `.KA` suffix (e.g. `HBL.KA`) but API routes strip this.
-- **Python dependency**: `psxdata` (pip install -r requirements.txt). Scripts auto-install on first run if missing. Requires Python 3.11+.
-- **PSX data source**: `https://dps.psx.com.pk` — plain AJAX endpoints scraped with `requests + BeautifulSoup`. No browser/Playwright needed.
-  - Live prices: `GET /screener` → `psxdata.quote()` (full board, filtered in-memory, cached 15 min)
-  - Stock search: `GET /symbols` → `psxdata.tickers()` (JSON, ~1000 symbols, cached 15 min)
-  - Dividends: `GET /financial-reports-list` → `psxdata.fundamentals()` (dates/types only, no per-share amounts)
+- **API routes** scrape PSX terminal data directly in **TypeScript** (server-side, Node runtime). No Python, no `child_process`, no third-party data package — the scraping/refinement logic was ported from the reference `psxdata` library into `src/lib/psx/` (see `foreign-repos/` for the originals).
+- **Price cache**: Two-level — in-memory module cache in `src/lib/psx/` (15-min TTL, mirrors the reference lib) + Supabase `price_cache` table for cross-request persistence.
+- **Currency**: PKR (₨). All amounts in rupees. PSX symbols use `.KA` suffix (e.g. `HBL.KA`). The scraper strips `.KA` for PSX lookups and re-applies it when keying the price map the frontend reads.
+- **Runtime deps**: `cheerio` (HTML table parsing) + global `fetch`. No Python required.
+- **PSX data source**: `https://dps.psx.com.pk` — plain AJAX endpoints fetched with `fetch` + parsed with `cheerio`. No browser/Playwright needed.
+  - Live prices: `GET /screener` (full table, ~735 symbols incl. inactive scrips like ENGRO; `price` column; filtered in-memory, cached 15 min). Note: the `/trading-board/REG/main` board was rejected — it omits ~240 symbols (no ENGRO) and has no current-price column.
+  - Stock search: `GET /symbols` (JSON, ~1029 symbols with `name`/`sectorName`/`isETF`/`isDebt`; cached 15 min)
+  - Dividends: `GET /financial-reports-list` — **currently returns only an empty table shell**; the rows are JS-loaded from an undiscovered endpoint, so dividend auto-fetch yields nothing (graceful empty, no crash). This was equally broken under the old Python version. Manual dividend entry is the working path.
 
 ---
 
@@ -77,25 +77,19 @@ src/
         refresh/route.ts              # POST — refresh all active stock prices via PSX scraping → saves to price_cache
       stocks/
         quote/route.ts                # GET ?symbols=A,B,C — fetch quotes from PSX → saves to price_cache
-        search/route.ts               # GET ?q=query — search PSX stocks (calls psx_search.py)
+        search/route.ts               # GET ?q=query — search PSX stocks (calls searchPSXStocks)
         dividends/route.ts            # GET ?symbol=X — fetch dividend events from PSX (dates/types only)
 
   lib/
-    psx/                              # PSX scraping layer — Python scripts + TypeScript wrappers
-      psx_quote.py                    # Python: fetches live quotes via psxdata.quote()
-      psx_search.py                   # Python: searches symbols via psxdata.tickers()
-      psx_dividends.py                # Python: fetches dividend events via psxdata.fundamentals()
-      runner.ts                       # Shared child_process.spawn wrapper (tries python/python3/py)
-      quote.ts                        # TS: calls psx_quote.py → PSXQuoteResult
-      search.ts                       # TS: calls psx_search.py → PSXSearchResult[]
-      dividends.ts                    # TS: calls psx_dividends.py → PSXDividendEvent[]
-      types.ts                        # Shared TypeScript types
-    yahoo/                            # DEPRECATED — yahoo-finance2 was removed; kept as reference
-      client.ts                       # (unused)
-      quote.ts                        # (unused)
-      search.ts                       # (unused)
-      dividends.ts                    # (unused)
-      types.ts                        # (unused)
+    psx/                              # PSX scraping layer — pure TypeScript (no Python)
+      constants.ts                    # Endpoints, request headers, retry config, COLUMN_MAP, cache TTL
+      http.ts                         # fetch wrapper: PSX headers + timeout + 5xx/network retry (port of base.py)
+      html-table.ts                   # cheerio HTML <table> parser (port of parsers/html.py)
+      normalizers.ts                  # coerceNumeric / parseDateToISO / normalizeColumnName (port of normalizers.py)
+      quote.ts                        # fetchQuotes() — live prices via /screener, cached 15 min → PSXQuoteResult
+      search.ts                       # searchPSXStocks() — /symbols JSON, filtered in-memory → PSXSearchResult[]
+      dividends.ts                    # fetchDividends() — /financial-reports-list → PSXDividendEvent[] (see Architecture caveat)
+      types.ts                        # Shared TypeScript result types
 
   components/
     layout/
@@ -140,12 +134,7 @@ src/
       server.ts                       # Server-side Supabase client (for API routes)
       database.types.ts               # Generated types — regenerate with:
                                       # npx supabase gen types typescript --linked --schema public > src/lib/supabase/database.types.ts
-    yahoo/
-      client.ts                       # yahoo-finance2 client instance
-      quote.ts                        # fetchQuotes() — batch price fetch with in-memory cache
-      search.ts                       # searchPSXStocks() — Yahoo search filtered to .KA suffix
-      dividends.ts                    # fetchDividends() — historical dividend events
-      types.ts                        # Shared Yahoo response types
+    (psx/ is the only external-data layer — see above; the old yahoo/ dir was deleted)
 
   types/
     index.ts                          # All domain types: Sector, Stock, Holding, ConsolidatedHolding,
@@ -200,6 +189,7 @@ All tables have `created_at` and `updated_at` (auto-updated via trigger) except 
 | `date-fns` | ^4.4.0 | Date utilities (available but check if used) |
 | `react-day-picker` | ^10.0.1 | Date picker (available but check if used) |
 | `tailwindcss` | ^4 | CSS. Config is in `postcss.config.mjs`. No `tailwind.config.ts` — v4 is config-file-free |
+| `cheerio` | ^1.x | HTML table parsing for the PSX scraper (`src/lib/psx/`). Replaced the Python `psxdata` dependency |
 
 ---
 
@@ -232,25 +222,23 @@ All tables have `created_at` and `updated_at` (auto-updated via trigger) except 
 
 ## Session Handoff
 
-**Last updated**: 2026-06-16 (Session 4)
+**Last updated**: 2026-06-16 (Session 5)
 
 ### What was done this session
-- Replaced Yahoo Finance with direct PSX terminal scraping using the `psxdata` Python library.
-- Created `src/lib/psx/` with 3 Python scripts (`psx_quote.py`, `psx_search.py`, `psx_dividends.py`), a shared `runner.ts`, and TypeScript wrappers.
-- Python scripts auto-install `psxdata` on first run if missing.
-- Swapped all 4 API routes to use the new PSX layer (quote, search, dividends, refresh).
-- Updated `package.json` to remove `yahoo-finance2`. Created `requirements.txt` for the Python side.
-- Updated `CLAUDE.md` to reflect the new architecture.
-- Updated dividends page to handle PSX's dates/types-only dividend data (amount_per_share must be entered manually).
+- **Rewrote the entire PSX scraper layer in pure TypeScript**, removing Python and the runtime `pip install psxdata` dependency. The previous agent had wrapped the third-party `psxdata` package as a black box (and against an imagined API — search was fully broken, market_state always UNKNOWN). The data-refinement logic was instead ported from the reference repo into TS.
+- New modules in `src/lib/psx/`: `constants.ts`, `http.ts` (fetch + retry), `html-table.ts` (cheerio table parser), `normalizers.ts`, and rewritten `quote.ts` / `search.ts` / `dividends.ts`.
+- Deleted `runner.ts`, the 3 `psx_*.py` scripts, `requirements.txt`, and the dead `src/lib/yahoo/` directory.
+- Added `cheerio`; verified live against PSX: search works (was broken), quotes return correct prices (ENGRO 485.38, HBL 302.50, LUCK 469.82). `tsc` + `eslint` clean.
+- **Switched the quote source from `/trading-board/REG/main` to `/screener`** — the board omits ~240 symbols (no ENGRO) and lacks a current-price column; the screener covers ~735 symbols with an explicit `price`.
 
 ### Known limitations
-- **Dividends have no per-share amounts from PSX** — the `amount_per_share` field is inserted as `0` when fetching from PSX. User must manually edit to add actual amounts. This is a PSX data limitation, not an app bug.
-- **PSX screener approach (Option A)** — fetches the full board (~729 symbols) and filters in-memory, cached 15 min. Works fine for any portfolio size. Option B (per-symbol trading board calls) is noted for later optimization.
+- **Dividend auto-fetch returns nothing.** `GET /financial-reports-list` now serves only an empty table shell — its rows are JS-loaded from an endpoint not yet identified. The scraper returns `[]` gracefully (no crash). This was equally broken under the old Python version. Manual dividend entry works.
+- **Dividends never had per-share amounts from PSX** even when rows were available — `amount_per_share` must be entered manually.
 
 ### Current state
-All 4 API routes now route through the PSX scraper. The app needs live testing to confirm `psxdata` works against the live PSX site.
+Quotes and search are TS-native and verified against live PSX. All 4 API routes consume the new layer with unchanged contracts (price map keyed by `.KA`, `price_cache.symbol` plain).
 
 ### Next task
-1. **Test the PSX integration** — run `python src/lib/psx/psx_quote.py ENGRO` to verify the scraper works, then run `pnpm dev` and check the portfolio page for live prices.
+1. **Dividends data endpoint** — open `https://dps.psx.com.pk/financial-reports-list` in a browser, watch the Network tab for the XHR that populates `#reportsTable`, and point `dividends.ts` at that endpoint. (Optional — manual entry is a working fallback.)
 2. **PWA setup** — Create `public/icons/` and configure `next.config.ts` with `withPWA`. High value for mobile use.
 3. **Dark mode** — Wire up `next-themes` ThemeProvider in layout and add a toggle button.
