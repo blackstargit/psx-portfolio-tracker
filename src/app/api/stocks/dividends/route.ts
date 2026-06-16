@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { fetchDividends } from '@/lib/yahoo/dividends'
+import { fetchDividends } from '@/lib/psx/dividends'
 
 export async function GET(request: NextRequest) {
   const symbol = request.nextUrl.searchParams.get('symbol')

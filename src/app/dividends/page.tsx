@@ -63,19 +63,19 @@ export default function DividendsPage() {
     try {
       const res = await fetch(`/api/stocks/dividends?symbol=${encodeURIComponent(symbol)}`)
       const data = await res.json()
-      const items = (data.dividends ?? []).map((d: { date: string; amount: number }) => ({
+      const items = (data.dividends ?? []).map((d: { date: string; type: string; dividend_type: string }) => ({
         ex_date: new Date(d.date).toISOString().split('T')[0],
-        amount_per_share: d.amount,
-        dividend_type: 'cash' as const,
+        amount_per_share: 0, // PSX provides dates/types only — user should edit to add actual amount
+        dividend_type: d.dividend_type as 'cash' | 'bonus' | 'special',
       }))
       if (items.length === 0) {
-        toast.info(`No dividend data found for ${symbol.replace('.KA', '')} on Yahoo Finance`)
+        toast.info(`No dividend data found for ${symbol.replace('.KA', '')} on PSX`)
         return
       }
       await upsertFromYahoo(stockId, items)
-      toast.success(`Fetched ${items.length} dividend event(s) for ${symbol.replace('.KA', '')}`)
+      toast.success(`Fetched ${items.length} dividend event(s) for ${symbol.replace('.KA', '')}. Add per-share amounts manually.`)
     } catch {
-      toast.error('Failed to fetch dividends from Yahoo Finance')
+      toast.error('Failed to fetch dividends from PSX')
     } finally {
       setFetchingSymbol(null)
     }
@@ -152,7 +152,7 @@ export default function DividendsPage() {
           </div>
         ) : dividends.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            No dividends recorded. Fetch from Yahoo Finance or add manually.
+            No dividends recorded. Fetch from PSX or add manually. PSX provides event dates — add per-share amounts yourself.
           </div>
         ) : (
           <div className="rounded-md border overflow-x-auto">

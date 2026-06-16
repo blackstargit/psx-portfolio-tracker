@@ -39,9 +39,14 @@ Both existing dynamic routes (`/portfolio/[stockId]` and `/planner/[planId]`) al
 
 - **All pages are `'use client'`** — no server-side rendering or RSC data fetching. Data loads in the browser via custom hooks.
 - **Data layer**: Custom React hooks in `src/hooks/` call Supabase directly from the browser using the anon client.
-- **API routes** exist only to proxy Yahoo Finance calls (server-side, to hide the library and avoid CORS).
-- **Price cache**: Two-level — in-memory Map per server process lifetime (`src/lib/yahoo/quote.ts`) + Supabase `price_cache` table for cross-request persistence. TTL is 5 min during PSX market hours, 60 min outside.
-- **Currency**: PKR (₨). All amounts in rupees. Symbols use `.KA` suffix for Yahoo Finance (e.g. `HBL.KA`).
+- **API routes** proxy PSX terminal scraping via Python `psxdata` library (server-side). Python scripts are called via `child_process.spawn` from TypeScript wrappers.
+- **Price cache**: Two-level — psxdata disk cache (`~/.psxdata/cache/`) + Supabase `price_cache` table for cross-request persistence. psxdata caches live data for 15 min.
+- **Currency**: PKR (₨). All amounts in rupees. PSX symbols use `.KA` suffix (e.g. `HBL.KA`) but API routes strip this.
+- **Python dependency**: `psxdata` (pip install -r requirements.txt). Scripts auto-install on first run if missing. Requires Python 3.11+.
+- **PSX data source**: `https://dps.psx.com.pk` — plain AJAX endpoints scraped with `requests + BeautifulSoup`. No browser/Playwright needed.
+  - Live prices: `GET /screener` → `psxdata.quote()` (full board, filtered in-memory, cached 15 min)
+  - Stock search: `GET /symbols` → `psxdata.tickers()` (JSON, ~1000 symbols, cached 15 min)
+  - Dividends: `GET /financial-reports-list` → `psxdata.fundamentals()` (dates/types only, no per-share amounts)
 
 ---
 
@@ -60,7 +65,7 @@ src/
     sectors/
       page.tsx                        # Sector allocation management (route: /sectors)
     dividends/
-      page.tsx                        # Dividend history, Yahoo fetch, manual add (route: /dividends)
+      page.tsx                        # Dividend history, PSX fetch, manual add (route: /dividends)
     planner/
       page.tsx                        # Monthly plans list (route: /planner)
       new/
@@ -69,11 +74,28 @@ src/
         page.tsx                      # Plan detail: allocations by sector (route: /planner/:id)
     api/
       prices/
-        refresh/route.ts              # POST — refresh all active stock prices via Yahoo → saves to price_cache
+        refresh/route.ts              # POST — refresh all active stock prices via PSX scraping → saves to price_cache
       stocks/
-        quote/route.ts                # GET ?symbols=A,B,C — fetch quotes from Yahoo → saves to price_cache
-        search/route.ts               # GET ?q=query — search PSX stocks via Yahoo Finance
-        dividends/route.ts            # GET ?symbol=X — fetch dividend history from Yahoo Finance
+        quote/route.ts                # GET ?symbols=A,B,C — fetch quotes from PSX → saves to price_cache
+        search/route.ts               # GET ?q=query — search PSX stocks (calls psx_search.py)
+        dividends/route.ts            # GET ?symbol=X — fetch dividend events from PSX (dates/types only)
+
+  lib/
+    psx/                              # PSX scraping layer — Python scripts + TypeScript wrappers
+      psx_quote.py                    # Python: fetches live quotes via psxdata.quote()
+      psx_search.py                   # Python: searches symbols via psxdata.tickers()
+      psx_dividends.py                # Python: fetches dividend events via psxdata.fundamentals()
+      runner.ts                       # Shared child_process.spawn wrapper (tries python/python3/py)
+      quote.ts                        # TS: calls psx_quote.py → PSXQuoteResult
+      search.ts                       # TS: calls psx_search.py → PSXSearchResult[]
+      dividends.ts                    # TS: calls psx_dividends.py → PSXDividendEvent[]
+      types.ts                        # Shared TypeScript types
+    yahoo/                            # DEPRECATED — yahoo-finance2 was removed; kept as reference
+      client.ts                       # (unused)
+      quote.ts                        # (unused)
+      search.ts                       # (unused)
+      dividends.ts                    # (unused)
+      types.ts                        # (unused)
 
   components/
     layout/
@@ -168,7 +190,6 @@ All tables have `created_at` and `updated_at` (auto-updated via trigger) except 
 | `next` | 16.2.9 | App Router. Dynamic params are Promises — see Breaking Changes above |
 | `react` / `react-dom` | 19.2.4 | `use()` hook required for async params |
 | `@supabase/supabase-js` | ^2.108.1 | Browser + server clients in `src/lib/supabase/` |
-| `yahoo-finance2` | ^3.15.3 | Used server-side only (API routes). Do not import in client components |
 | `@ducanh2912/next-pwa` | ^10.2.9 | **Installed but NOT configured** — `next.config.ts` is empty |
 | `recharts` | ^3.8.1 | Used in charts/ components |
 | `next-themes` | ^0.4.6 | **Installed but NOT wired up** — no ThemeProvider in layout, no toggle UI |
@@ -186,15 +207,15 @@ All tables have `created_at` and `updated_at` (auto-updated via trigger) except 
 
 ### Done ✅
 - Dashboard: summary cards (invested, value, P&L amount, P&L %), sector pie chart, P&L bar chart, holding count stats
-- Portfolio page: lots view (HoldingsTable) + consolidated view (ConsolidatedView), add stock dialog with Yahoo search, add holding dialog
+- Portfolio page: lots view (HoldingsTable) + consolidated view (ConsolidatedView), add stock dialog with PSX search, add holding dialog
 - Stock detail page `/portfolio/[stockId]`: per-stock summary cards, purchase lots, dividend history sub-table, notes
 - Sectors page: allocation overview bar, sector list with expand/collapse, add/edit/delete sector
-- Dividends page: total income summary, per-stock Yahoo fetch buttons, manual add/edit/delete, dividend table with your-income column
+- Dividends page: total income summary, per-stock PSX fetch buttons, manual add/edit/delete, dividend table with your-income column
 - Monthly Planner list page: plan cards with status badge
 - New Plan wizard: setup step (month/budget/notes) + allocate step (per-sector stock % inputs with live price calculations)
 - Plan detail page: allocations grouped by sector with shares/stop-loss/remaining columns, finalize button
 - All Supabase CRUD hooks for every entity
-- Yahoo Finance integration: quote fetch with in-memory + DB cache, search, dividend history
+- PSX terminal scraping via `psxdata` Python library: quote fetch (screener, 15-min cache), stock search (symbols), dividend events (financial reports — dates/types only, no per-share amounts)
 - Responsive layout: sidebar on desktop, bottom nav on mobile
 - PWA manifest.json
 
@@ -211,18 +232,25 @@ All tables have `created_at` and `updated_at` (auto-updated via trigger) except 
 
 ## Session Handoff
 
-**Last updated**: 2026-06-15 (Session 2)
+**Last updated**: 2026-06-16 (Session 4)
 
 ### What was done this session
-- Ran Supabase CLI setup: `supabase init`, `supabase link --project-ref ooybauabapkkwcoyvybg`, `supabase db push` (applied `001_initial_schema.sql`)
-- Regenerated `src/lib/supabase/database.types.ts` from the live Supabase project
-- Wrote this CLAUDE.md with full project documentation
+- Replaced Yahoo Finance with direct PSX terminal scraping using the `psxdata` Python library.
+- Created `src/lib/psx/` with 3 Python scripts (`psx_quote.py`, `psx_search.py`, `psx_dividends.py`), a shared `runner.ts`, and TypeScript wrappers.
+- Python scripts auto-install `psxdata` on first run if missing.
+- Swapped all 4 API routes to use the new PSX layer (quote, search, dividends, refresh).
+- Updated `package.json` to remove `yahoo-finance2`. Created `requirements.txt` for the Python side.
+- Updated `CLAUDE.md` to reflect the new architecture.
+- Updated dividends page to handle PSX's dates/types-only dividend data (amount_per_share must be entered manually).
+
+### Known limitations
+- **Dividends have no per-share amounts from PSX** — the `amount_per_share` field is inserted as `0` when fetching from PSX. User must manually edit to add actual amounts. This is a PSX data limitation, not an app bug.
+- **PSX screener approach (Option A)** — fetches the full board (~729 symbols) and filters in-memory, cached 15 min. Works fine for any portfolio size. Option B (per-symbol trading board calls) is noted for later optimization.
 
 ### Current state
-The app is fully scaffolded and Supabase is connected with schema applied and types generated. Running `pnpm dev` should show a working dashboard (if there's data in the DB). The incomplete items listed above (PWA icons, edit holding, mark sold, dark mode, planner review step) were NOT worked on this session.
+All 4 API routes now route through the PSX scraper. The app needs live testing to confirm `psxdata` works against the live PSX site.
 
 ### Next task
-The highest-value incomplete items in priority order:
-1. **PWA setup** — Create `public/icons/` with the three required PNG icons, then configure `next.config.ts` with `withPWA`. This makes the app installable on mobile (the primary use case for a personal stock tracker).
-2. **Edit holding + mark sold** — Wire up the `Edit2` button in `holdings-table.tsx` and add a "Mark Sold" action. Both functions already exist in `use-holdings.ts`.
-3. **Dark mode** — Wrap layout with `next-themes` `ThemeProvider` and add a toggle button to the header.
+1. **Test the PSX integration** — run `python src/lib/psx/psx_quote.py ENGRO` to verify the scraper works, then run `pnpm dev` and check the portfolio page for live prices.
+2. **PWA setup** — Create `public/icons/` and configure `next.config.ts` with `withPWA`. High value for mobile use.
+3. **Dark mode** — Wire up `next-themes` ThemeProvider in layout and add a toggle button.

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { fetchQuotes } from '@/lib/yahoo/quote'
+import { fetchQuotes } from '@/lib/psx/quote'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export async function GET(request: NextRequest) {
