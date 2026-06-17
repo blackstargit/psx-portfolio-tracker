@@ -55,24 +55,29 @@ Both existing dynamic routes (`/portfolio/[stockId]` and `/planner/[planId]`) al
 ```
 src/
   app/
-    page.tsx                          # Dashboard (route: /)
-    layout.tsx                        # Root layout — Sidebar + MobileNav + Toaster + TooltipProvider
-    globals.css
-    portfolio/
-      page.tsx                        # Holdings list with lots/consolidated toggle (route: /portfolio)
-      [stockId]/
-        page.tsx                      # Per-stock detail: lots, dividends, stop-loss (route: /portfolio/:id)
-    sectors/
-      page.tsx                        # Sector allocation management (route: /sectors)
-    dividends/
-      page.tsx                        # Dividend history, PSX fetch, manual add (route: /dividends)
-    planner/
-      page.tsx                        # Monthly plans list (route: /planner)
-      new/
-        page.tsx                      # New plan wizard: setup → allocate (review step NOT implemented)
-      [planId]/
-        page.tsx                      # Plan detail: allocations by sector (route: /planner/:id)
+    layout.tsx                        # Root layout — auth redirect only
+    login/
+      page.tsx                        # Login page
+    (app)/
+      layout.tsx                      # Authenticated layout — Sidebar + MobileNav + Toaster + TooltipProvider
+      page.tsx                        # Dashboard (route: /)
+      portfolio/
+        page.tsx                      # Holdings list with lots/consolidated toggle (route: /portfolio)
+        [stockId]/
+          page.tsx                    # Per-stock detail: lots, dividends, stop-loss (route: /portfolio/:id)
+      sectors/
+        page.tsx                      # Sector allocation management (route: /sectors)
+      dividends/
+        page.tsx                      # Dividend history, PSX fetch, manual add (route: /dividends)
+      planner/
+        page.tsx                      # Monthly plans list (route: /planner)
+        new/
+          page.tsx                    # New plan wizard: setup → allocate → review
+        [planId]/
+          page.tsx                    # Plan detail: allocations by sector (route: /planner/:id)
     api/
+      auth/
+        logout/route.ts               # POST — clears session cookie, redirects to /login
       prices/
         refresh/route.ts              # POST — refresh all active stock prices via PSX scraping → saves to price_cache
       stocks/
@@ -94,20 +99,20 @@ src/
   components/
     layout/
       header.tsx                      # Page header with title + refresh button
-      sidebar.tsx                     # Desktop sidebar nav (hidden on mobile)
+      sidebar.tsx                     # Desktop sidebar nav with logout button
       mobile-nav.tsx                  # Bottom nav bar (mobile only)
     portfolio/
-      holdings-table.tsx              # Holdings table — has Edit2 icon imported but edit is NOT wired up
+      holdings-table.tsx              # Holdings table with inline Edit, partial/full sell, delete per row
       consolidated-view.tsx           # Averaged per-stock view
       add-holding-dialog.tsx          # Dialog to add a purchase lot
-      add-stock-dialog.tsx            # Dialog to add a tracked stock (with Yahoo search)
+      add-stock-dialog.tsx            # Dialog to add a tracked stock (with PSX symbol search)
       pnl-badge.tsx                   # Green/red P&L percentage badge
-      stock-search.tsx                # Yahoo Finance stock search input
+      stock-search.tsx                # PSX stock search input (via /api/stocks/search)
     sectors/
       sector-form.tsx                 # Create/edit sector dialog
       allocation-bar.tsx              # Visual sector allocation bar
     charts/
-      portfolio-pie-chart.tsx         # Sector allocation pie (Recharts)
+      portfolio-pie-chart.tsx         # Sector allocation pie (Recharts) — tooltip shows sector name + value
       pnl-bar-chart.tsx               # Per-stock P&L bar chart (Recharts)
     ui/                               # shadcn/ui primitives (alert, badge, button, card, command,
                                       # dialog, input, input-group, label, popover, scroll-area,
@@ -115,12 +120,13 @@ src/
                                       # table, tabs, textarea, tooltip)
 
   hooks/
-    use-holdings.ts                   # CRUD for holdings + consolidated_holdings view
+    use-holdings.ts                   # CRUD for holdings + consolidated_holdings view; markSold supports partial sells
     use-stocks.ts                     # CRUD for stocks
     use-sectors.ts                    # CRUD for sectors + totalAllocation sum
     use-prices.ts                     # Price fetching with 30s refresh cooldown
-    use-dividends.ts                  # CRUD for dividends + Yahoo upsert
+    use-dividends.ts                  # CRUD for dividends + PSX upsert
     use-plans.ts                      # CRUD for monthly_plans; usePlan(id) for detail
+    use-sort.ts                       # Reusable sort state + sortRows() helper
     use-debounce.ts                   # Generic debounce hook (used in stock-search)
     index.ts                          # Re-exports all hooks
 
@@ -196,49 +202,70 @@ All tables have `created_at` and `updated_at` (auto-updated via trigger) except 
 ## Feature Status
 
 ### Done ✅
-- Dashboard: summary cards (invested, value, P&L amount, P&L %), sector pie chart, P&L bar chart, holding count stats
+- Dashboard: summary cards (invested, value, P&L amount, P&L %), sector pie chart (tooltip shows sector name + value), P&L bar chart, holding count stats
 - Portfolio page: lots view (HoldingsTable) + consolidated view (ConsolidatedView), add stock dialog with PSX search, add holding dialog
+- Holdings table: inline edit (buy date/price/qty/notes), partial or full sell (Qty to Sell field — selling less than the lot splits it into a reduced active lot + a new sold lot), delete
 - Stock detail page `/portfolio/[stockId]`: per-stock summary cards, purchase lots, dividend history sub-table, notes
 - Sectors page: allocation overview bar, sector list with expand/collapse, add/edit/delete sector
 - Dividends page: total income summary, per-stock PSX fetch buttons, manual add/edit/delete, dividend table with your-income column
 - Monthly Planner list page: plan cards with status badge
-- New Plan wizard: setup step (month/budget/notes) + allocate step (per-sector stock % inputs with live price calculations)
+- New Plan wizard: setup step (month/budget/notes) → allocate step (per-sector stock % inputs with live price calculations) → review step (full summary table, Save as Draft / Finalize)
 - Plan detail page: allocations grouped by sector with shares/stop-loss/remaining columns, finalize button
 - All Supabase CRUD hooks for every entity
-- PSX terminal scraping via `psxdata` Python library: quote fetch (screener, 15-min cache), stock search (symbols), dividend events (financial reports — dates/types only, no per-share amounts)
+- PSX terminal scraping in pure TypeScript: quote fetch (screener, 15-min cache), stock search (symbols endpoint), dividend events (financial reports — graceful empty, see limitation below)
+- Authentication: login page with session cookie, middleware protection, logout button in sidebar
 - Responsive layout: sidebar on desktop, bottom nav on mobile
 - PWA manifest.json
 
 ### Incomplete / Not Done ❌
 1. **PWA icons missing** — `public/icons/` directory does not exist. `manifest.json` references `icon-192x192.png`, `icon-512x512.png`, `apple-touch-icon.png`. App cannot be installed as a PWA.
 2. **PWA service worker not configured** — `@ducanh2912/next-pwa` is installed but `next.config.ts` is empty. Must wrap the config with `withPWA()`.
-3. ~~**Edit holding UI not wired**~~ — **Done (Session 3).** `EditHoldingDialog` wired via `onEdit` prop in `HoldingsTable`. Available on both `/portfolio` and `/portfolio/[stockId]`.
-4. ~~**Mark-as-sold UI missing**~~ — **Done (Session 3).** `MarkSoldDialog` (amber DollarSign button) shows buy summary, sell date/price, live P&L preview before confirming.
-5. ~~**Planner review step not implemented**~~ — **Done (Session 3).** Allocate step ends with "Next: Review". Review step shows full per-sector table then Save as Draft / Finalize buttons.
-6. **Dark mode toggle missing** — `next-themes` is installed but `ThemeProvider` is not in `layout.tsx` and there is no toggle button in the header or sidebar.
-7. **Stop-loss factor not configurable** — Hardcoded at 15% in `src/lib/constants.ts` (`STOP_LOSS_FACTOR = 0.85`). No settings page.
+3. **Dark mode toggle missing** — `next-themes` is installed but `ThemeProvider` is not in `layout.tsx` and there is no toggle button in the header or sidebar.
+4. **Stop-loss factor not configurable** — Hardcoded at 15% in `src/lib/constants.ts` (`STOP_LOSS_FACTOR = 0.85`). No settings page.
+5. **Dividend auto-fetch returns nothing** — `GET /financial-reports-list` returns an empty table shell; rows are JS-loaded from an undiscovered XHR endpoint. Manual dividend entry is the working path.
 
 ---
 
 ## Session Handoff
 
-**Last updated**: 2026-06-16 (Session 5)
+**Last updated**: 2026-06-17 (Session 6)
 
 ### What was done this session
-- **Rewrote the entire PSX scraper layer in pure TypeScript**, removing Python and the runtime `pip install psxdata` dependency. The previous agent had wrapped the third-party `psxdata` package as a black box (and against an imagined API — search was fully broken, market_state always UNKNOWN). The data-refinement logic was instead ported from the reference repo into TS.
-- New modules in `src/lib/psx/`: `constants.ts`, `http.ts` (fetch + retry), `html-table.ts` (cheerio table parser), `normalizers.ts`, and rewritten `quote.ts` / `search.ts` / `dividends.ts`.
-- Deleted `runner.ts`, the 3 `psx_*.py` scripts, `requirements.txt`, and the dead `src/lib/yahoo/` directory.
-- Added `cheerio`; verified live against PSX: search works (was broken), quotes return correct prices (ENGRO 485.38, HBL 302.50, LUCK 469.82). `tsc` + `eslint` clean.
-- **Switched the quote source from `/trading-board/REG/main` to `/screener`** — the board omits ~240 symbols (no ENGRO) and lacks a current-price column; the screener covers ~735 symbols with an explicit `price`.
+- **Partial sell support** (`src/hooks/use-holdings.ts`, `src/components/portfolio/holdings-table.tsx`): `MarkSoldDialog` now has a "Qty to Sell" field. If qty < lot size, the original lot's quantity is reduced and a new sold lot is inserted. Full sell (qty = lot) still marks the original row `is_sold=true`. The button label changes to "Confirm Partial Sale" when selling partially, with helper text showing remaining shares.
+- **Pie chart tooltip** (`src/components/charts/portfolio-pie-chart.tsx`): Custom tooltip now shows sector name in bold above the value (previously only showed the value).
 
 ### Known limitations
-- **Dividend auto-fetch returns nothing.** `GET /financial-reports-list` now serves only an empty table shell — its rows are JS-loaded from an endpoint not yet identified. The scraper returns `[]` gracefully (no crash). This was equally broken under the old Python version. Manual dividend entry works.
-- **Dividends never had per-share amounts from PSX** even when rows were available — `amount_per_share` must be entered manually.
+- Dividend auto-fetch has never worked — `GET /financial-reports-list` returns an empty shell; the actual row data is fetched by a JS-triggered XHR not yet identified. Manual entry works fine.
+- `amount_per_share` must always be entered manually — PSX doesn't expose it in any currently-scraped endpoint.
 
 ### Current state
-Quotes and search are TS-native and verified against live PSX. All 4 API routes consume the new layer; the price map and `price_cache.symbol` are both keyed by the **plain** symbol (the `.KA` keying was a bug — see Architecture/Currency).
+App is fully deployed on Netlify. Quotes and search are TS-native against live PSX. Auth, all CRUD, partial sells, and sorting all work. `tsc` is clean.
 
 ### Next task
-1. **Dividends data endpoint** — open `https://dps.psx.com.pk/financial-reports-list` in a browser, watch the Network tab for the XHR that populates `#reportsTable`, and point `dividends.ts` at that endpoint. (Optional — manual entry is a working fallback.)
-2. **PWA setup** — Create `public/icons/` and configure `next.config.ts` with `withPWA`. High value for mobile use.
-3. **Dark mode** — Wire up `next-themes` ThemeProvider in layout and add a toggle button.
+1. **Dividends XHR endpoint** — open `https://dps.psx.com.pk/financial-reports-list` in a browser, watch the Network tab for the request that populates `#reportsTable`, and point `dividends.ts` at it. (Optional — manual entry is the working fallback.)
+2. **PWA setup** — create `public/icons/` with three PNG icons and configure `next.config.ts` with `withPWA()`. High value for mobile use.
+3. **Dark mode** — wire up `next-themes` ThemeProvider in `(app)/layout.tsx` and add a toggle button to the sidebar or header.
+
+---
+
+## Session History
+
+### Session 5 — 2026-06-16
+**Goal**: Fix broken PSX data layer and deploy to Netlify.
+- Rewrote the entire PSX scraper layer in pure TypeScript, removing Python and the `psxdata` pip dependency. Ported scraping logic from the reference repo into `src/lib/psx/` (constants, http, html-table, normalizers, quote, search, dividends).
+- Deleted `runner.ts`, the 3 `psx_*.py` scripts, `requirements.txt`, and the dead `src/lib/yahoo/` directory. Added `cheerio`.
+- Switched quote source from `/trading-board/REG/main` to `/screener` — the board omitted ~240 symbols (no ENGRO) and had no current-price column.
+- Fixed Netlify build failure caused by secrets scanning detecting Supabase credentials in `CLAUDE.md`; moved credentials to Netlify environment variables and redacted from the file.
+- Added login page, session cookie auth, middleware protection, and logout button in sidebar.
+
+### Session 3 — 2026-06-15 (afternoon)
+**Goal**: Implement three remaining medium-priority incomplete features.
+- Added `EditHoldingDialog` to `HoldingsTable` — pre-fills buy date, price, quantity, notes; wired to `updateHolding()` on both `/portfolio` and `/portfolio/[stockId]`.
+- Added `MarkSoldDialog` to `HoldingsTable` — shows buy summary, sell date/price, live P&L calculation; calls `markSold()` which sets `is_sold=true`.
+- Added review step to New Plan wizard — plan summary card + per-sector table + Save as Draft / Finalize buttons.
+
+### Session 2 — 2026-06-15 (morning)
+Set up Supabase CLI, applied schema migration, generated `database.types.ts`, wrote original `CLAUDE.md` and `docs/HANDOFF.md`. No feature code changes.
+
+### Session 1 — 2026-06-14
+Original agent scaffolded the entire application: all 5 pages, Supabase hooks, API routes, Yahoo Finance integration (later replaced), responsive layout, shadcn/ui, PWA manifest. Left incomplete: PWA icons/SW, edit holding UI, mark-sold UI, planner review step, dark mode.
