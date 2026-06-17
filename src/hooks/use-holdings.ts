@@ -72,12 +72,33 @@ export function useHoldings(stockId?: string) {
     await fetch()
   }
 
-  const markSold = async (id: string, sellDate: string, sellPrice: number) => {
-    const { error } = await supabase
-      .from('holdings')
-      .update({ is_sold: true, sell_date: sellDate, sell_price: sellPrice })
-      .eq('id', id)
-    if (error) throw new Error(error.message)
+  const markSold = async (holding: Holding, sellQuantity: number, sellDate: string, sellPrice: number) => {
+    if (sellQuantity >= holding.quantity) {
+      const { error } = await supabase
+        .from('holdings')
+        .update({ is_sold: true, sell_date: sellDate, sell_price: sellPrice })
+        .eq('id', holding.id)
+      if (error) throw new Error(error.message)
+    } else {
+      const { error: updateError } = await supabase
+        .from('holdings')
+        .update({ quantity: holding.quantity - sellQuantity })
+        .eq('id', holding.id)
+      if (updateError) throw new Error(updateError.message)
+      const { error: insertError } = await supabase
+        .from('holdings')
+        .insert({
+          stock_id: holding.stock_id,
+          buy_date: holding.buy_date,
+          buy_price: holding.buy_price,
+          quantity: sellQuantity,
+          is_sold: true,
+          sell_date: sellDate,
+          sell_price: sellPrice,
+          notes: holding.notes ?? null,
+        })
+      if (insertError) throw new Error(insertError.message)
+    }
     await fetch()
   }
 

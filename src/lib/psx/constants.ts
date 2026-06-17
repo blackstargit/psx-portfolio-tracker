@@ -17,6 +17,9 @@ export const ENDPOINTS = {
   symbols: '/symbols',
   // Financial report filings list (dividend/bonus declarations — dates/types only).
   financial_reports: '/financial-reports-list',
+  // Per-symbol OHLCV history (POST with form data {symbol}). Returns all history;
+  // PSX ignores any date params — filter in memory after parsing.
+  historical: '/historical',
 } as const
 
 // Single well-formed User-Agent — PSX showed no UA-based blocking. These headers
@@ -76,4 +79,11 @@ export const COLUMN_MAP: Record<string, string> = {
   'POSTING DATE': 'posting_date',
   'POSTING TIME': 'posting_time',
   DOCUMENT: 'document',
+  // Historical OHLCV (POST /historical)
+  DATE: 'date',
+  'DATE ': 'date',   // PSX header has a trailing space
+  OPEN: 'open',
+  HIGH: 'high',
+  LOW: 'low',
+  CLOSE: 'close',
 }

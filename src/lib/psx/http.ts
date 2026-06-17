@@ -74,3 +74,42 @@ export async function psxGetJson<T>(endpoint: EndpointName, suffix = ''): Promis
   const text = await psxGet(buildUrl(endpoint, suffix))
   return JSON.parse(text) as T
 }
+
+/**
+ * POST a PSX URL with application/x-www-form-urlencoded form data.
+ * Same retry/timeout/header logic as psxGet. Returns the response body as text.
+ * Used by the /historical endpoint which expects: { symbol: "HBL" }.
+ */
+export async function psxPost(url: string, form: Record<string, string>): Promise<string> {
+  let lastErr: unknown
+
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          ...REQUEST_HEADERS,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams(form).toString(),
+        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+        cache: 'no-store',
+      })
+
+      if (res.ok) return await res.text()
+
+      const msg = `PSX POST ${url} returned ${res.status}`
+      // 4xx — not retriable
+      if (/returned 4\d\d/.test(msg)) throw new Error(msg)
+      lastErr = new Error(msg)
+    } catch (err) {
+      lastErr = err
+    }
+
+    if (attempt < MAX_RETRIES) {
+      await sleep(RETRY_DELAYS_MS[attempt - 1])
+    }
+  }
+
+  throw lastErr
+}

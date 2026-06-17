@@ -37,7 +37,7 @@ interface HoldingsTableProps {
   loading: boolean
   onDelete: (id: string) => Promise<void>
   onEdit?: (id: string, values: { buy_date: string; buy_price: number; quantity: number; notes?: string }) => Promise<void>
-  onMarkSold?: (id: string, sellDate: string, sellPrice: number) => Promise<void>
+  onMarkSold?: (holding: Holding, sellQuantity: number, sellDate: string, sellPrice: number) => Promise<void>
   showStock?: boolean
 }
 
@@ -273,8 +273,8 @@ export function HoldingsTable({
         <MarkSoldDialog
           holding={sellingHolding}
           onClose={() => setSellingHolding(null)}
-          onSave={async (sellDate, sellPrice) => {
-            await onMarkSold(sellingHolding.id, sellDate, sellPrice)
+          onSave={async (sellQuantity, sellDate, sellPrice) => {
+            await onMarkSold(sellingHolding, sellQuantity, sellDate, sellPrice)
             setSellingHolding(null)
           }}
         />
@@ -386,25 +386,37 @@ function MarkSoldDialog({
 }: {
   holding: Holding
   onClose: () => void
-  onSave: (sellDate: string, sellPrice: number) => Promise<void>
+  onSave: (sellQuantity: number, sellDate: string, sellPrice: number) => Promise<void>
 }) {
   const [sellDate, setSellDate] = useState(new Date().toISOString().split('T')[0])
   const [sellPrice, setSellPrice] = useState(String(holding.buy_price))
+  const [sellQty, setSellQty] = useState(String(holding.quantity))
   const [loading, setLoading] = useState(false)
 
   const sellPriceNum = parseFloat(sellPrice)
+  const sellQtyNum = parseInt(sellQty)
+  const isPartial = !isNaN(sellQtyNum) && sellQtyNum > 0 && sellQtyNum < holding.quantity
+
   const pnlPct = !isNaN(sellPriceNum) && sellPriceNum > 0
     ? calcPnLPct(holding.buy_price, sellPriceNum)
+    : null
+  const pnlAmount = !isNaN(sellPriceNum) && !isNaN(sellQtyNum) && sellQtyNum > 0
+    ? calcPnLAmount(holding.buy_price, sellPriceNum, sellQtyNum)
     : null
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (isNaN(sellPriceNum) || sellPriceNum <= 0) { toast.error('Enter a valid sell price'); return }
-    if (!confirm(`Mark ${holding.quantity} shares as sold at ${formatPrice(sellPriceNum)}?`)) return
+    if (isNaN(sellQtyNum) || sellQtyNum <= 0) { toast.error('Enter a valid quantity'); return }
+    if (sellQtyNum > holding.quantity) { toast.error(`Cannot sell more than ${holding.quantity} shares`); return }
+    const confirmMsg = isPartial
+      ? `Sell ${sellQtyNum} of ${holding.quantity} shares at ${formatPrice(sellPriceNum)}? (${holding.quantity - sellQtyNum} shares will remain)`
+      : `Mark all ${holding.quantity} shares as sold at ${formatPrice(sellPriceNum)}?`
+    if (!confirm(confirmMsg)) return
     setLoading(true)
     try {
-      await onSave(sellDate, sellPriceNum)
-      toast.success('Holding marked as sold')
+      await onSave(sellQtyNum, sellDate, sellPriceNum)
+      toast.success(isPartial ? 'Partial sale recorded' : 'Holding marked as sold')
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to mark as sold')
     } finally {
@@ -417,23 +429,42 @@ function MarkSoldDialog({
       <DialogContent className="sm:max-w-sm">
         <DialogHeader>
           <DialogTitle>
-            Mark as Sold — {holding.stock?.symbol?.replace('.KA', '') ?? ''}
+            Sell — {holding.stock?.symbol?.replace('.KA', '') ?? ''}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="rounded-md bg-muted/50 px-3 py-2 text-sm space-y-1">
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Quantity</span>
+              <span className="text-muted-foreground">Lot Qty</span>
               <span className="font-semibold">{formatNumber(holding.quantity)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Avg Buy Price</span>
+              <span className="text-muted-foreground">Buy Price</span>
               <span className="font-mono">{formatPrice(holding.buy_price)}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-muted-foreground">Total Cost</span>
+              <span className="text-muted-foreground">Lot Cost</span>
               <span className="font-mono">{formatCurrency(holding.buy_price * holding.quantity)}</span>
             </div>
+          </div>
+
+          <div className="space-y-1">
+            <Label htmlFor="sell-qty">Qty to Sell</Label>
+            <Input
+              id="sell-qty"
+              type="number"
+              min="1"
+              max={holding.quantity}
+              step="1"
+              value={sellQty}
+              onChange={(e) => setSellQty(e.target.value)}
+              required
+            />
+            {isPartial && (
+              <p className="text-xs text-muted-foreground">
+                Partial sell — {holding.quantity - sellQtyNum} shares will remain in this lot
+              </p>
+            )}
           </div>
 
           <div className="space-y-1">
@@ -457,10 +488,10 @@ function MarkSoldDialog({
               onChange={(e) => setSellPrice(e.target.value)}
               required
             />
-            {pnlPct != null && (
+            {pnlPct != null && pnlAmount != null && (
               <p className={`text-xs font-medium mt-1 ${pnlPct >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 Realized P&L: {pnlPct >= 0 ? '+' : ''}{pnlPct.toFixed(2)}%
-                {' '}({formatCurrency(calcPnLAmount(holding.buy_price, sellPriceNum, holding.quantity))})
+                {' '}({formatCurrency(pnlAmount)})
               </p>
             )}
           </div>
@@ -468,7 +499,7 @@ function MarkSoldDialog({
           <div className="flex gap-2 justify-end">
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
             <Button type="submit" disabled={loading} className="bg-amber-600 hover:bg-amber-700">
-              {loading ? 'Saving...' : 'Confirm Sale'}
+              {loading ? 'Saving...' : isPartial ? 'Confirm Partial Sale' : 'Confirm Sale'}
             </Button>
           </div>
         </form>

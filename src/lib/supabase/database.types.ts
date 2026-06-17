@@ -208,6 +208,27 @@ export type Database = {
           },
         ]
       }
+      historical_cache: {
+        Row: {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          data: any[]          // PSXOHLCV[] — typed at the API layer
+          fetched_at: string
+          symbol: string
+        }
+        Insert: {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          data: any[]
+          fetched_at?: string
+          symbol: string
+        }
+        Update: {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          data?: any[]
+          fetched_at?: string
+          symbol?: string
+        }
+        Relationships: []
+      }
       price_cache: {
         Row: {
           currency: string | null

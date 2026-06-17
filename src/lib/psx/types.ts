@@ -26,3 +26,18 @@ export interface PSXDividendEvent {
   type: 'cash' | 'bonus'
   dividend_type: string  // e.g. "FINAL", "INTERIM", "BONUS"
 }
+
+/** One daily OHLCV bar returned by POST /historical. */
+export interface PSXOHLCV {
+  date: string    // YYYY-MM-DD
+  open: number
+  high: number
+  low: number
+  close: number
+  volume: number
+}
+
+export interface PSXHistoryResult {
+  symbol: string
+  bars: PSXOHLCV[]  // sorted ascending by date (oldest first)
+}
