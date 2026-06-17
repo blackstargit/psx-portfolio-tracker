@@ -1,13 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard,
   BookOpen,
   Building2,
   CalendarRange,
   Coins,
+  LogOut,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -21,6 +22,12 @@ const NAV_ITEMS = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+
+  const handleLogout = async () => {
+    await fetch('/api/auth/logout', { method: 'POST' })
+    router.push('/login')
+  }
 
   return (
     <aside className="hidden md:flex w-56 flex-shrink-0 flex-col border-r bg-background h-screen sticky top-0">
@@ -53,8 +60,14 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-5 py-3 border-t text-xs text-muted-foreground">
-        Pakistan Stock Exchange
+      <div className="px-3 py-3 border-t">
+        <button
+          onClick={handleLogout}
+          className="flex w-full items-center gap-3 px-3 py-2 rounded-md text-sm font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground"
+        >
+          <LogOut className="h-4 w-4 flex-shrink-0" />
+          Sign out
+        </button>
       </div>
     </aside>
   )
