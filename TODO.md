@@ -4,3 +4,5 @@
 > Dark mode toggle                  │ next-themes installed, no ThemeProvider in layout, no toggle
 
 > PSX Terminal does provide dividends and ex-payments. I don't know why Claude said that it doesn't. It is under the table "Recent Dividends" in the path /symbol/StockName?market=REG. The main page of the stock has a section for it, so it should be available to us. Check later. 
+
+> minor cosmetic change to increase size of text in card.
