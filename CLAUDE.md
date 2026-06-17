@@ -154,7 +154,7 @@ public/
 
 ## Database Schema
 
-Supabase project: `ooybauabapkkwcoyvybg` (URL: `https://ooybauabapkkwcoyvybg.supabase.co`)
+Supabase project: see `NEXT_PUBLIC_SUPABASE_URL` in `.env.local`
 
 | Table | Purpose | Key columns |
 |---|---|---|
