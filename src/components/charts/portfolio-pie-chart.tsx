@@ -50,7 +50,16 @@ export function PortfolioPieChart({ data }: PortfolioPieChartProps) {
           ))}
         </Pie>
         <Tooltip
-          formatter={(value) => [`₨ ${Number(value).toLocaleString()}`, 'Value']}
+          content={({ active, payload }) => {
+            if (!active || !payload?.length) return null
+            const { name, value } = payload[0].payload
+            return (
+              <div className="rounded-md border bg-background px-3 py-2 text-sm shadow-md">
+                <p className="font-semibold">{name}</p>
+                <p className="text-muted-foreground">₨ {Number(value).toLocaleString()}</p>
+              </div>
+            )
+          }}
         />
         <Legend
           iconType="circle"
