@@ -1,36 +1,94 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# PSX Portfolio Tracker
+
+A personal portfolio tracker for the **Pakistan Stock Exchange (PSX)**. Track holdings across multiple buy lots, monitor live prices scraped directly from PSX, plan monthly investments by sector, and record dividends — all in Pakistani Rupees (₨).
+
+Built with Next.js 16, React 19, Supabase, and a pure-TypeScript PSX scraping layer (no Python, no paid market-data API).
+
+---
+
+## Features
+
+- **Dashboard** — total invested, current value, P&L (amount + %), sector allocation pie chart, and per-stock P&L bar chart.
+- **Portfolio** — track stocks with per-lot buy entries. Toggle between a detailed lots view and an averaged consolidated view. Inline editing, partial or full sells (selling part of a lot splits it automatically), and per-row delete.
+- **Stock detail** — per-stock summary, purchase lots, dividend history, and stop-loss tracking.
+- **Sectors** — define sector buckets with target allocation percentages (summing to 100%) and visualize current allocation.
+- **Monthly Planner** — a wizard to build monthly investment plans: set a budget, allocate across sectors and stocks with live price calculations, then save as draft or finalize with computed shares-to-buy and stop-loss levels.
+- **Dividends** — record dividend events (cash / bonus / special) and see your income per stock.
+- **Live PSX prices** — quotes and stock search scraped directly from `dps.psx.com.pk` in TypeScript, with a two-level (in-memory + Supabase) price cache.
+- **Auth** — login with session-cookie authentication and middleware-protected routes.
+- **Responsive** — desktop sidebar navigation and mobile bottom nav.
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| Framework | [Next.js 16](https://nextjs.org) (App Router) + [React 19](https://react.dev) |
+| Database & Auth | [Supabase](https://supabase.com) (Postgres) |
+| Styling | [Tailwind CSS v4](https://tailwindcss.com) + [shadcn/ui](https://ui.shadcn.com) |
+| Charts | [Recharts](https://recharts.org) |
+| Market data | Custom PSX scraper (`cheerio` + `fetch`) |
+| Language | TypeScript |
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 20+
+- A [Supabase](https://supabase.com) project (free tier is fine)
+
+### 1. Install dependencies
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Configure environment
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Copy the example env file and fill in your values:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+cp .env.local.example .env.local
+```
 
-## Learn More
+| Variable | Description |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/public key |
+| `USERNAME` / `PASSWORD` | Login credentials for the app |
+| `SESSION_SECRET` | Secret used to sign the session cookie |
+| `SUPABASE_DB_PASSWORD` | Database password (for `supabase` CLI migrations) |
 
-To learn more about Next.js, take a look at the following resources:
+### 3. Set up the database
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+Apply the schema migration to your Supabase project:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npx supabase db push
+```
 
-## Deploy on Vercel
+This creates the `sectors`, `stocks`, `holdings`, `monthly_plans`, `plan_allocations`, `dividends`, and `price_cache` tables, plus the `consolidated_holdings` view.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 4. Run the dev server
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+pnpm dev
+```
+
+Open [http://localhost:8010](http://localhost:8010).
+
+## Available Scripts
+
+| Script | Description |
+|---|---|
+| `pnpm dev` | Start the dev server on port 8010 |
+| `pnpm build` | Production build |
+| `pnpm start` | Run the production build |
+| `pnpm lint` | Run ESLint |
+
+## Deployment
+
+The app is configured for [Netlify](https://www.netlify.com) (see `netlify.toml`) via `@netlify/plugin-nextjs`. Set the environment variables from `.env.local.example` in your Netlify site settings — do **not** commit real credentials.
+
+## License
+
+This is a personal project. Not licensed for redistribution.
