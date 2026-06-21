@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   // Persist fresh prices to DB cache
   if (Object.keys(result.prices).length > 0) {
     try {
-      const supabase = createServerSupabaseClient()
+      const supabase = await createServerSupabaseClient()
       const upserts = Object.values(result.prices)
         .filter((p) => !p.stale)
         .map((p) => ({

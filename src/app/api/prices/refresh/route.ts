@@ -3,7 +3,7 @@ import { fetchQuotes } from '@/lib/psx/quote'
 import { createServerSupabaseClient } from '@/lib/supabase/server'
 
 export async function POST() {
-  const supabase = createServerSupabaseClient()
+  const supabase = await createServerSupabaseClient()
 
   // Fetch all active stock symbols from DB
   const { data: stocks, error } = await supabase

@@ -15,7 +15,7 @@ Built with Next.js 16, React 19, Supabase, and a pure-TypeScript PSX scraping la
 - **Monthly Planner** — a wizard to build monthly investment plans: set a budget, allocate across sectors and stocks with live price calculations, then save as draft or finalize with computed shares-to-buy and stop-loss levels.
 - **Dividends** — record dividend events (cash / bonus / special) and see your income per stock.
 - **Live PSX prices** — quotes and stock search scraped directly from `dps.psx.com.pk` in TypeScript, with a two-level (in-memory + Supabase) price cache.
-- **Auth** — login with session-cookie authentication and middleware-protected routes.
+- **Auth** — Supabase Auth (email/password) with middleware-protected routes and Row Level Security on every table.
 - **Responsive** — desktop sidebar navigation and mobile bottom nav.
 
 ## Tech Stack
@@ -53,10 +53,10 @@ cp .env.local.example .env.local
 | Variable | Description |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` | Your Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/public key |
-| `USERNAME` / `PASSWORD` | Login credentials for the app |
-| `SESSION_SECRET` | Secret used to sign the session cookie |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Supabase publishable key (`sb_publishable_...`) |
 | `SUPABASE_DB_PASSWORD` | Database password (for `supabase` CLI migrations) |
+
+Login is handled by **Supabase Auth** — create your user under **Authentication → Users** in the Supabase dashboard. There are no app-level username/password env vars.
 
 ### 3. Set up the database
 

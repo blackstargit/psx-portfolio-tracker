@@ -11,6 +11,7 @@
   "dependencies": {
     "@base-ui/react": "^1.5.0",
     "@ducanh2912/next-pwa": "^10.2.9",
+    "@supabase/ssr": "^0.12.0",
     "@supabase/supabase-js": "^2.108.1",
     "cheerio": "^1.2.0",
     "cmdk": "^1.1.1",
