@@ -27,6 +27,7 @@ import { Header } from '@/components/layout/header'
 import { useDividends } from '@/hooks/use-dividends'
 import { useStocks } from '@/hooks/use-stocks'
 import { useHoldings } from '@/hooks/use-holdings'
+import { usePrices } from '@/hooks/use-prices'
 import { formatCurrency, formatDate } from '@/lib/formatters'
 import type { Dividend } from '@/types'
 
@@ -34,27 +35,20 @@ export default function DividendsPage() {
   const { dividends, loading, addDividend, updateDividend, deleteDividend, upsertFromYahoo } = useDividends()
   const { stocks } = useStocks()
   const { holdings } = useHoldings()
+  const { prices } = usePrices()
   const [formOpen, setFormOpen] = useState(false)
   const [editingDividend, setEditingDividend] = useState<Dividend | null>(null)
   const [fetchingSymbol, setFetchingSymbol] = useState<string | null>(null)
 
-  // Compute total received per dividend (based on holdings at that date)
-  const getSharesAtDate = (stockId: string, exDate: string) => {
-    const dateObj = new Date(exDate)
-    return holdings
-      .filter(
-        (h) =>
-          h.stock_id === stockId &&
-          !h.is_sold &&
-          new Date(h.buy_date) <= dateObj
-      )
-      .reduce((sum, h) => sum + h.quantity, 0)
-  }
+  const currentSharesMap = holdings.reduce<Record<string, number>>((acc, h) => {
+    if (!h.is_sold) acc[h.stock_id] = (acc[h.stock_id] ?? 0) + h.quantity
+    return acc
+  }, {})
 
   const totalIncome = dividends
     .filter((d) => d.dividend_type === 'cash')
     .reduce((sum, d) => {
-      const shares = getSharesAtDate(d.stock_id, d.ex_date)
+      const shares = currentSharesMap[d.stock_id] ?? 0
       return sum + d.amount_per_share * shares
     }, 0)
 
@@ -119,7 +113,7 @@ export default function DividendsPage() {
           <h2 className="text-base font-semibold">Dividend History</h2>
           <div className="flex gap-2">
             {/* Fetch all from Yahoo */}
-            <div className="flex gap-1.5">
+            <div className="flex flex-wrap gap-1.5">
               {stocks.map((s) => (
                 <Button
                   key={s.id}
@@ -154,7 +148,7 @@ export default function DividendsPage() {
           </div>
         ) : dividends.length === 0 ? (
           <div className="text-center py-12 text-muted-foreground">
-            No dividends recorded. Fetch from PSX or add manually. PSX provides event dates — add per-share amounts yourself.
+            No dividends recorded. Fetch from PSX or add manually.
           </div>
         ) : (
           <div className="rounded-md border overflow-x-auto">
@@ -165,32 +159,38 @@ export default function DividendsPage() {
                   <th className="text-left px-4 py-2">Ex-Date</th>
                   <th className="text-left px-4 py-2">Payment Date</th>
                   <th className="text-right px-4 py-2">Per Share</th>
+                  <th className="text-right px-4 py-2">Share Price</th>
                   <th className="text-left px-4 py-2">Type</th>
                   <th className="text-right px-4 py-2">Your Shares</th>
                   <th className="text-right px-4 py-2">Your Income</th>
-                  <th className="text-left px-4 py-2">Source</th>
                   <th />
                 </tr>
               </thead>
               <tbody>
                 {dividends.map((d) => {
-                  const sharesAtDate = getSharesAtDate(d.stock_id, d.ex_date)
-                  const income = d.dividend_type === 'cash' ? d.amount_per_share * sharesAtDate : null
+                  const shares = currentSharesMap[d.stock_id] ?? 0
+                  const income = d.dividend_type === 'cash' ? d.amount_per_share * shares : null
+                  const sym = d.stock?.symbol ?? ''
+                  const sharePrice = prices[sym]?.price ?? null
                   return (
                     <tr key={d.id} className="border-b last:border-0">
                       <td className="px-4 py-2 font-mono font-semibold text-primary">
-                        {d.stock?.symbol?.replace('.KA', '') ?? '—'}
+                        {sym.replace('.KA', '') || '—'}
                       </td>
                       <td className="px-4 py-2">{formatDate(d.ex_date)}</td>
                       <td className="px-4 py-2 text-muted-foreground">{d.payment_date ? formatDate(d.payment_date) : '—'}</td>
                       <td className="px-4 py-2 text-right font-mono">{formatCurrency(d.amount_per_share)}</td>
-                      <td className="px-4 py-2"><Badge variant="secondary" className="capitalize">{d.dividend_type}</Badge></td>
-                      <td className="px-4 py-2 text-right">{sharesAtDate || '—'}</td>
-                      <td className="px-4 py-2 text-right font-mono text-green-600">
-                        {income != null ? formatCurrency(income) : '—'}
+                      <td className="px-4 py-2 text-right font-mono text-muted-foreground">
+                        {sharePrice != null ? formatCurrency(sharePrice) : '—'}
                       </td>
                       <td className="px-4 py-2">
-                        <Badge variant="outline" className="text-xs uppercase">{d.source}</Badge>
+                        <Badge variant="secondary" className="capitalize">
+                          {d.dividend_type === 'cash' ? 'Bank Account' : d.dividend_type}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-2 text-right">{shares || '—'}</td>
+                      <td className="px-4 py-2 text-right font-mono text-green-600">
+                        {income != null ? formatCurrency(income) : '—'}
                       </td>
                       <td className="px-4 py-2">
                         <div className="flex gap-1">
@@ -334,7 +334,7 @@ function DividendForm({
               <Label>Type</Label>
               <Select
                 items={[
-                  { value: 'cash', label: 'Cash' },
+                  { value: 'cash', label: 'Bank Account' },
                   { value: 'bonus', label: 'Bonus' },
                   { value: 'special', label: 'Special' },
                 ]}
@@ -343,7 +343,7 @@ function DividendForm({
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="cash">Cash</SelectItem>
+                  <SelectItem value="cash">Bank Account</SelectItem>
                   <SelectItem value="bonus">Bonus</SelectItem>
                   <SelectItem value="special">Special</SelectItem>
                 </SelectContent>
