@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { Plus, Download, Edit2, Trash2, Loader2 } from 'lucide-react'
@@ -361,3 +361,4 @@ function DividendForm({
     </Dialog>
   )
 }
+

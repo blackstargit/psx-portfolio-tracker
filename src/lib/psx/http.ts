@@ -80,7 +80,11 @@ export async function psxGetJson<T>(endpoint: EndpointName, suffix = ''): Promis
  * Same retry/timeout/header logic as psxGet. Returns the response body as text.
  * Used by the /historical endpoint which expects: { symbol: "HBL" }.
  */
-export async function psxPost(url: string, form: Record<string, string>): Promise<string> {
+export async function psxPost(
+  url: string,
+  form: Record<string, string>,
+  extraHeaders: Record<string, string> = {}
+): Promise<string> {
   let lastErr: unknown
 
   for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -89,6 +93,7 @@ export async function psxPost(url: string, form: Record<string, string>): Promis
         method: 'POST',
         headers: {
           ...REQUEST_HEADERS,
+          ...extraHeaders,
           'Content-Type': 'application/x-www-form-urlencoded',
         },
         body: new URLSearchParams(form).toString(),

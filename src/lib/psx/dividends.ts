@@ -1,4 +1,4 @@
-/**
+﻿/**
  * PSX dividend / bonus events via the financial reports filing list.
  *
  * GET /financial-reports-list returns all filings as an HTML table with columns:
@@ -70,10 +70,11 @@ export async function fetchDividends(
     if (!date) continue
     if (fromDate && date < fromDate) continue
 
-    events.push({ date, type: kind, dividend_type: rawType || kind })
+    events.push({ date, type: kind, dividend_type: rawType || kind, amount_per_share: null })
   }
 
   // Newest first.
   events.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0))
   return events
 }
+

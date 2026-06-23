@@ -1,4 +1,4 @@
-// Public result types for the PSX scraper layer (src/lib/psx/*.ts).
+﻿// Public result types for the PSX scraper layer (src/lib/psx/*.ts).
 // Mirror the shapes the API routes + frontend already consume.
 
 export interface PSXPriceEntry {
@@ -22,9 +22,10 @@ export interface PSXSearchResult {
 }
 
 export interface PSXDividendEvent {
-  date: string        // ISO date string YYYY-MM-DD
+  date: string              // ISO date YYYY-MM-DD (book-closure start = ex-date)
   type: 'cash' | 'bonus'
-  dividend_type: string  // e.g. "FINAL", "INTERIM", "BONUS"
+  dividend_type: string     // raw Details cell, e.g. "60%(i) (D)"
+  amount_per_share: number | null  // pct/100 * Rs 10 face value; null if unparseable
 }
 
 /** One daily OHLCV bar returned by POST /historical. */

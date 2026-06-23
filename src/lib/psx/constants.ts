@@ -15,8 +15,11 @@ export const ENDPOINTS = {
   screener: '/screener',
   // Full instrument list as JSON (~1029 symbols) with sector names + type flags.
   symbols: '/symbols',
-  // Financial report filings list (dividend/bonus declarations — dates/types only).
+  // Financial report filings list (currently returns empty shell — JS-loaded rows).
   financial_reports: '/financial-reports-list',
+  // Per-company payout history (dividend/bonus announcements with % and book-closure dates).
+  // POST with { symbol } and Referer: BASE_URL/company/{SYMBOL}.
+  company_payouts: '/company/payouts',
   // Per-symbol OHLCV history (POST with form data {symbol}). Returns all history;
   // PSX ignores any date params — filter in memory after parsing.
   historical: '/historical',
