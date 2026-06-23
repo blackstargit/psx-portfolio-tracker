@@ -118,17 +118,9 @@ export default function NewPlanPage() {
   const getSectorTotal = (sp: SectorPlan) =>
     sp.selections.reduce((sum, s) => sum + (s.pct || 0), 0)
 
-  const isAllocationValid = () =>
-    sectorPlans
-      .filter((sp) => sp.selections.length > 0)
-      .every((sp) => Math.abs(getSectorTotal(sp) - 100) < 0.5)
+  const hasAnySelections = () => sectorPlans.some((sp) => sp.selections.length > 0)
 
   const handleSave = async (status: 'draft' | 'finalized') => {
-    if (!isAllocationValid()) {
-      toast.error('Within-sector percentages must total 100% for each active sector')
-      return
-    }
-
     setSaving(true)
     try {
       const plan = await createPlan({ month, budget: budgetNum, notes })
@@ -388,8 +380,6 @@ export default function NewPlanPage() {
             const sectorAmount = calcSectorAmount(budgetNum, sp.sector.allocation_pct)
             const availableStocks = getSectorStocks(sp.sector.id)
             const sectorTotal = getSectorTotal(sp)
-            const isValid = sp.selections.length === 0 || Math.abs(sectorTotal - 100) < 0.5
-
             return (
               <Card key={sp.sector.id}>
                 <CardHeader className="pb-3">
@@ -400,13 +390,18 @@ export default function NewPlanPage() {
                         {sp.sector.allocation_pct}% = {formatCurrency(sectorAmount)}
                       </span>
                     </CardTitle>
-                    {!isValid && (
-                      <Badge variant="destructive" className="text-xs">
-                        {sectorTotal.toFixed(0)}% / 100%
+                    {sp.selections.length > 0 && (
+                      <Badge
+                        className={
+                          Math.abs(sectorTotal - 100) < 0.5
+                            ? 'text-xs bg-green-600'
+                            : sectorTotal > 100
+                              ? 'text-xs bg-orange-500'
+                              : 'text-xs bg-yellow-500 text-foreground'
+                        }
+                      >
+                        {sectorTotal.toFixed(0)}%{Math.abs(sectorTotal - 100) < 0.5 ? ' ✓' : ''}
                       </Badge>
-                    )}
-                    {isValid && sp.selections.length > 0 && (
-                      <Badge className="text-xs bg-green-600">100% ✓</Badge>
                     )}
                   </div>
                 </CardHeader>
@@ -498,7 +493,7 @@ export default function NewPlanPage() {
         <div className="flex justify-end gap-3">
           <Button
             onClick={() => setStep('review')}
-            disabled={!isAllocationValid()}
+            disabled={!hasAnySelections()}
           >
             Next: Review <ArrowRight className="h-4 w-4 ml-2" />
           </Button>
