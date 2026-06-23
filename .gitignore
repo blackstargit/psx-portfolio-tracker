@@ -46,7 +46,5 @@ next-env.d.ts
 .serena/
 .netlify/
 
-# private agent/planning docs
-CLAUDE.md
-AGENTS.md
+# planning docs
 TODO.md
