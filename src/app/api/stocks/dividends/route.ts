@@ -6,6 +6,11 @@ export async function GET(request: NextRequest) {
   if (!symbol) {
     return NextResponse.json({ error: 'symbol parameter is required' }, { status: 400 })
   }
-  const dividends = await fetchPayouts(symbol.toUpperCase())
-  return NextResponse.json({ dividends })
+  try {
+    const dividends = await fetchPayouts(symbol.toUpperCase())
+    return NextResponse.json({ dividends })
+  } catch (err) {
+    console.error('[/api/stocks/dividends] fetchPayouts threw:', err)
+    return NextResponse.json({ error: String(err) }, { status: 500 })
+  }
 }

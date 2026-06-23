@@ -63,17 +63,19 @@ export default function DividendsPage() {
     try {
       const res = await fetch(`/api/stocks/dividends?symbol=${encodeURIComponent(symbol)}`)
       const data = await res.json()
-      const items = (data.dividends ?? []).map((d: { date: string; type: string; dividend_type: string }) => ({
-        ex_date: new Date(d.date).toISOString().split('T')[0],
-        amount_per_share: 0, // PSX provides dates/types only — user should edit to add actual amount
-        dividend_type: d.dividend_type as 'cash' | 'bonus' | 'special',
-      }))
+      const items = (data.dividends ?? []).map(
+        (d: { date: string; type: 'cash' | 'bonus'; amount_per_share: number | null }) => ({
+          ex_date: d.date,
+          amount_per_share: d.amount_per_share ?? 0,
+          dividend_type: d.type as 'cash' | 'bonus' | 'special',
+        })
+      )
       if (items.length === 0) {
         toast.info(`No dividend data found for ${symbol.replace('.KA', '')} on PSX`)
         return
       }
       await upsertFromYahoo(stockId, items)
-      toast.success(`Fetched ${items.length} dividend event(s) for ${symbol.replace('.KA', '')}. Add per-share amounts manually.`)
+      toast.success(`Fetched ${items.length} dividend event(s) for ${symbol.replace('.KA', '')}`)
     } catch {
       toast.error('Failed to fetch dividends from PSX')
     } finally {
