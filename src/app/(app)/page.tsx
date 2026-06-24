@@ -142,7 +142,7 @@ function SummaryCard({
   valueClass?: string
 }) {
   return (
-    <Card>
+    <Card className="hover:-translate-y-1 hover:shadow-md transition-all duration-300">
       <CardHeader className="pb-1">
         <CardTitle className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
           {icon}
@@ -153,7 +153,7 @@ function SummaryCard({
         {loading ? (
           <Skeleton className="h-7 w-3/4" />
         ) : (
-          <p className={cn('text-xl font-bold tabular-nums', valueClass)}>{value}</p>
+          <p className={cn('text-2xl tracking-tight font-bold tabular-nums', valueClass)}>{value}</p>
         )}
       </CardContent>
     </Card>

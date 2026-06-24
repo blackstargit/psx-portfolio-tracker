@@ -32,7 +32,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="hidden md:flex w-56 flex-shrink-0 flex-col border-r bg-background h-screen sticky top-0">
+    <aside className="hidden md:flex w-56 flex-shrink-0 flex-col border-r bg-background/80 backdrop-blur-md h-screen sticky top-0">
       {/* Logo */}
       <div className="flex items-center gap-2 px-5 py-5 border-b">
         <span className="text-lg font-bold tracking-tight text-primary">PSX Tracker</span>

@@ -23,7 +23,7 @@ export function MobileNav() {
   const pathname = usePathname()
 
   return (
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-background">
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-background/80 backdrop-blur-md pb-safe">
       <div className="flex">
         {NAV_ITEMS.map(({ href, label, icon: Icon }) => {
           const isActive =

@@ -1,4 +1,4 @@
-﻿'use client'
+'use client'
 
 import { useState } from 'react'
 import { Plus, Download, Edit2, Trash2, Loader2 } from 'lucide-react'
@@ -158,7 +158,7 @@ export default function DividendsPage() {
                   <th className="text-left px-4 py-2">Stock</th>
                   <th className="text-left px-4 py-2">Ex-Date</th>
                   <th className="text-left px-4 py-2">Payment Date</th>
-                  <th className="text-right px-4 py-2">Per Share</th>
+                  <th className="text-right px-4 py-2 whitespace-nowrap">Per Share</th>
                   <th className="text-right px-4 py-2">Share Price</th>
                   <th className="text-left px-4 py-2">Type</th>
                   <th className="text-right px-4 py-2">Your Shares</th>
@@ -179,7 +179,7 @@ export default function DividendsPage() {
                       </td>
                       <td className="px-4 py-2">{formatDate(d.ex_date)}</td>
                       <td className="px-4 py-2 text-muted-foreground">{d.payment_date ? formatDate(d.payment_date) : '—'}</td>
-                      <td className="px-4 py-2 text-right font-mono">{formatCurrency(d.amount_per_share)}</td>
+                      <td className="px-4 py-2 text-right font-mono whitespace-nowrap">{formatCurrency(d.amount_per_share)}</td>
                       <td className="px-4 py-2 text-right font-mono text-muted-foreground">
                         {sharePrice != null ? formatCurrency(sharePrice) : '—'}
                       </td>

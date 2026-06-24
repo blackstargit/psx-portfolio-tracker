@@ -13,6 +13,6 @@ export const PSX_MARKET_CLOSE_MINUTE = 30
 export const PSX_UTC_OFFSET = 5 // UTC+5
 
 export const CURRENCY = 'PKR'
-export const CURRENCY_SYMBOL = '₨'
+export const CURRENCY_SYMBOL = 'Rs.'
 
 export const PSX_SYMBOL_SUFFIX = '.KA'

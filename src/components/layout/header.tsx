@@ -23,7 +23,7 @@ export function Header({
   lastRefreshed,
 }: HeaderProps) {
   return (
-    <header className="flex items-center justify-between px-6 py-4 border-b bg-background">
+    <header className="flex items-center justify-between px-6 py-4 border-b bg-background/80 backdrop-blur-md sticky top-0 z-10">
       <h1 className="text-xl font-semibold">{title}</h1>
 
       <div className="flex items-center gap-3">

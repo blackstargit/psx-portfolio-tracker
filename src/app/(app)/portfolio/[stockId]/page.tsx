@@ -130,19 +130,19 @@ export default function StockDetailPage({ params }: { params: Promise<{ stockId:
 
         {/* Stock summary */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
+          <Card className="hover:-translate-y-1 hover:shadow-md transition-all duration-300">
             <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground">Current Price</CardTitle></CardHeader>
-            <CardContent><p className="text-xl font-bold font-mono">{currentPrice != null ? formatPrice(currentPrice) : '—'}</p></CardContent>
+            <CardContent><p className="text-xl font-bold font-mono tabular-nums tracking-tight">{currentPrice != null ? formatPrice(currentPrice) : '—'}</p></CardContent>
           </Card>
-          <Card>
+          <Card className="hover:-translate-y-1 hover:shadow-md transition-all duration-300">
             <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground">Stop Loss</CardTitle></CardHeader>
-            <CardContent><p className="text-xl font-bold font-mono text-red-600">{stopLoss != null ? formatPrice(stopLoss) : '—'}</p></CardContent>
+            <CardContent><p className="text-xl font-bold font-mono text-red-600 tabular-nums tracking-tight">{stopLoss != null ? formatPrice(stopLoss) : '—'}</p></CardContent>
           </Card>
-          <Card>
+          <Card className="hover:-translate-y-1 hover:shadow-md transition-all duration-300">
             <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground">Avg Buy Price</CardTitle></CardHeader>
-            <CardContent><p className="text-xl font-bold font-mono">{formatPrice(avgBuyPrice)}</p></CardContent>
+            <CardContent><p className="text-xl font-bold font-mono tabular-nums tracking-tight">{formatPrice(avgBuyPrice)}</p></CardContent>
           </Card>
-          <Card>
+          <Card className="hover:-translate-y-1 hover:shadow-md transition-all duration-300">
             <CardHeader className="pb-1"><CardTitle className="text-xs text-muted-foreground">P&L %</CardTitle></CardHeader>
             <CardContent><PnlBadge pct={pnlPct} className="text-base" /></CardContent>
           </Card>
@@ -188,12 +188,12 @@ export default function StockDetailPage({ params }: { params: Promise<{ stockId:
                     ]
                   : []),
               ].map(({ label, value, className: cls }) => (
-                <Card key={label}>
-                  <CardHeader className="pb-1 pt-3 px-3">
-                    <CardTitle className="text-xs text-muted-foreground">{label}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="px-3 pb-3">
-                    <p className={`text-sm font-bold font-mono ${cls ?? ''}`}>{value}</p>
+                <Card key={label} className="overflow-hidden">
+                  <CardContent className="p-2.5">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{label}</span>
+                      <p className={`text-sm font-bold font-mono tabular-nums tracking-tight ${cls ?? ''}`}>{value}</p>
+                    </div>
                   </CardContent>
                 </Card>
               ))}

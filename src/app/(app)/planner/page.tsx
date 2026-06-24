@@ -41,7 +41,7 @@ export default function PlannerPage() {
           <div className="space-y-2">
             {plans.map((plan) => (
               <Link key={plan.id} href={`/planner/${plan.id}`}>
-                <Card className="hover:bg-accent/50 transition-colors cursor-pointer">
+                <Card className="hover:-translate-y-1 hover:shadow-md transition-all duration-300 cursor-pointer">
                   <CardContent className="pt-4 pb-4">
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex items-center gap-3">
@@ -52,7 +52,7 @@ export default function PlannerPage() {
                         )}
                         <div>
                           <p className="font-semibold">{formatMonth(plan.month)}</p>
-                          <p className="text-sm text-muted-foreground">
+                          <p className="text-sm text-muted-foreground tabular-nums tracking-tight">
                             Budget: {formatCurrency(plan.budget)}
                           </p>
                         </div>
