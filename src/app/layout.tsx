@@ -18,6 +18,10 @@ export const metadata: Metadata = {
   title: 'PSX Portfolio Tracker',
   description: 'Personal Pakistan Stock Exchange portfolio management',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/icons/icon-192x192.png',
+    apple: '/icons/apple-touch-icon.png',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
