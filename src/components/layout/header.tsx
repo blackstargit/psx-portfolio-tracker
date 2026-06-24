@@ -13,6 +13,8 @@ interface HeaderProps {
   lastRefreshed?: Date | null
 }
 
+import { ThemeToggle } from '@/components/theme-toggle'
+
 export function Header({
   title,
   onRefresh,
@@ -41,6 +43,7 @@ export function Header({
             {isRefreshing ? 'Refreshing...' : 'Refresh Prices'}
           </Button>
         )}
+        <ThemeToggle />
       </div>
     </header>
   )

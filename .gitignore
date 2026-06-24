@@ -48,3 +48,4 @@ next-env.d.ts
 
 # planning docs
 TODO.md
+.agent/
