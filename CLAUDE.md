@@ -60,7 +60,9 @@ Both existing dynamic routes (`/portfolio/[stockId]` and `/planner/[planId]`) al
 ```
 src/
   app/
-    layout.tsx                        # Root layout — auth redirect only
+    layout.tsx                        # Root layout — full SEO metadata (metadataBase, OG/Twitter, robots, canonical), auth redirect
+    sitemap.ts                        # Generates /sitemap.xml — public routes only (/, /login)
+    opengraph-image.tsx               # Generated 1200×630 social share card (next/og ImageResponse)
     login/
       page.tsx                        # Login page
     (app)/
@@ -165,7 +167,9 @@ supabase/
     001_initial_schema.sql            # Full schema — run via `npx supabase db push`
 
 public/
-  manifest.json                       # PWA manifest — references /icons/ which DO NOT EXIST yet
+  manifest.json                       # PWA manifest — id/scope/categories set; icons exist in /icons/
+  robots.txt                          # Crawler rules — fully open; AI/LLM bots explicitly whitelisted; points to sitemap
+  icons/                              # PWA icons: icon-192x192.png, icon-512x512.png, apple-touch-icon.png
   *.svg                               # Default Next.js SVG assets
 ```
 
@@ -229,43 +233,53 @@ All tables have `created_at` and `updated_at` (auto-updated via trigger) except 
 - PSX terminal scraping in pure TypeScript: quote fetch (screener, 15-min cache), stock search (symbols endpoint), dividend payout history (`POST /company/payouts` — real per-share amounts auto-populated on fetch)
 - Authentication: login page with session cookie, middleware protection, logout button in sidebar
 - Responsive layout: sidebar on desktop, bottom nav on mobile
-- PWA manifest.json
+- PWA manifest.json (with `id`/`scope`/`categories`) + PWA icons present in `public/icons/`
+- SEO & discoverability (Session 8): canonical domain `https://psx.blackstar.io` via `metadataBase`; OpenGraph + Twitter card metadata; generated OG share image (`opengraph-image.tsx`); `sitemap.ts` → `/sitemap.xml`; `robots.txt` fully open with AI/LLM crawlers explicitly whitelisted
 
 ### Incomplete / Not Done ❌
-1. **PWA icons missing** — `public/icons/` directory does not exist. `manifest.json` references `icon-192x192.png`, `icon-512x512.png`, `apple-touch-icon.png`. App cannot be installed as a PWA.
-2. **PWA service worker not configured** — `@ducanh2912/next-pwa` is installed but `next.config.ts` is empty. Must wrap the config with `withPWA()`.
-3. **Dark mode toggle missing** — `next-themes` is installed but `ThemeProvider` is not in `layout.tsx` and there is no toggle button in the header or sidebar.
-4. **Stop-loss factor not configurable** — Hardcoded at 15% in `src/lib/constants.ts` (`STOP_LOSS_FACTOR = 0.85`). No settings page.
+1. **PWA service worker not configured** — `@ducanh2912/next-pwa` is installed but `next.config.ts` is empty. Must wrap the config with `withPWA()`. (Icons now exist; manifest is ready — only the SW wiring is left.)
+2. **Dark mode toggle missing** — `ThemeProvider` is wired into the root `layout.tsx`, but there is no user-facing toggle button in the header or sidebar.
+3. **Stop-loss factor not configurable** — Hardcoded at 15% in `src/lib/constants.ts` (`STOP_LOSS_FACTOR = 0.85`). No settings page.
+4. **Search Console verification not set** — no Google/Bing site-verification meta tag yet (add via `metadata.verification` once the domain is claimed).
 
 ---
 
 ## Session Handoff
 
-**Last updated**: 2026-06-23 (Session 7)
+**Last updated**: 2026-06-25 (Session 9)
 
 ### What was done this session
-- **PSX dividend payouts scraper** (`src/lib/psx/payouts.ts`): New `fetchPayouts(symbol)` hits `POST /company/payouts` with the correct symbol-specific Referer (`https://dps.psx.com.pk/company/{SYMBOL}`). Parses the HTML table to extract book-closure start date (as ex-date), dividend type (`(D)`=cash, `(B)`=bonus, skip `(R)`=rights), and amount (`pct/100 × Rs 10 face value`). Adds `amount_per_share` field to `PSXDividendEvent` type.
-- **Dividends API route updated** (`src/app/api/stocks/dividends/route.ts`): Now calls `fetchPayouts()` instead of the defunct `fetchDividends()`. Response includes real `amount_per_share` values.
-- **Dividends page updated** (`src/app/(app)/dividends/page.tsx`): Maps `d.amount_per_share` (real value) instead of hardcoded `0`; uses `d.type` for DB `dividend_type`; toast no longer says "Add per-share amounts manually".
-- **psxPost gains extraHeaders** (`src/lib/psx/http.ts`): Optional third param `extraHeaders?: Record<string, string>` spread after `REQUEST_HEADERS`, allowing per-request Referer override.
-- **Planner flexibility** (`src/app/(app)/planner/new/page.tsx`): Removed 100%-per-sector hard gate. `isAllocationValid()` replaced by `hasAnySelections()`. Sector badge is now purely informational (tri-state: green=100%, yellow<100%, orange>100%). Next button disabled only if zero stocks selected across all sectors.
-- **Mobile navbar fix** (`src/app/layout.tsx`, `src/app/(app)/layout.tsx`): Added `overflow-x-hidden` to root body and `min-w-0` to the content flex container. Prevents horizontal overflow (from wide tables on the Sectors page) from breaking `position: fixed` on iOS Safari.
+- **Subdomain Redirects** (`netlify.toml`): Configured permanent (301) redirects from `psx-portfolio-tracker.netlify.app/*` to `psx.blackstar.io/:splat` (both HTTP and HTTPS). This ensures traffic to the Netlify subdomain is forced onto the custom domain, applying Cloudflare's security policies and preventing direct bypass.
 
 ### Known limitations
-- Face value assumption: `fetchPayouts()` uses Rs 10 face value for all symbols. Companies with Rs 5 or Rs 2.5 par value will have amounts off by 2× or 4×. Users can correct via the manual-edit button.
-- Bonus dividend `amount_per_share` is set to the same `pct/100 × 10` formula, which is technically the ratio of new shares issued, not a cash amount. The dividends table displays it but income calculations already skip bonus entries (`dividend_type !== 'cash'`).
+- Crawlers can only reach `/` and `/login` — every data page sits behind auth, so there is no public content to index beyond the landing/login. The robots/sitemap scope reflects this. Add public routes to `sitemap.ts` if a marketing page is ever introduced.
+- No Search Console verification tag yet — add `metadata.verification` once `psx.blackstar.io` is claimed in Google/Bing.
+- (Carried over) `fetchPayouts()` assumes Rs 10 face value for all symbols; Rs 5 / Rs 2.5 par stocks will be off by 2×/4× — correctable via manual edit.
 
 ### Current state
-App is fully deployed on Netlify. Quotes, search, and dividend payout history all work live against PSX. Planner is in facilitator mode. Mobile nav renders correctly on all pages. `tsc` is clean (pre-existing supabase/ssr implicit-any errors unrelated to our code).
+App is deployed on Netlify. Quotes, search, and dividend payout history work live against PSX. Planner is in facilitator mode; mobile nav renders correctly on all pages. SEO/robots/sitemap/OG-image in place for the `psx.blackstar.io` subdomain. Netlify subdomain now redirects to the custom domain. `tsc --noEmit` is clean for all changed files (pre-existing supabase/ssr implicit-any errors are unrelated).
 
 ### Next task
-1. **PWA setup** — create `public/icons/` with three PNG icons and configure `next.config.ts` with `withPWA()`. High value for mobile use.
-2. **Dark mode** — wire up `next-themes` ThemeProvider in `(app)/layout.tsx` and add a toggle button to the sidebar or header.
-3. **Face value per-stock** — optionally store `face_value` on the `stocks` table so `fetchPayouts()` can use the correct multiplier per symbol instead of defaulting to Rs 10.
+1. **Point DNS + Netlify** at `psx.blackstar.io` (subdomain CNAME + Netlify custom domain verification), then verify in Google Search Console and add the verification tag via `metadata.verification`.
+2. **PWA service worker** — configure `next.config.ts` with `withPWA()` (icons + manifest are already ready).
+3. **Dark mode toggle** — `ThemeProvider` is already in `layout.tsx`; add a user-facing toggle in the sidebar/header.
+4. **Face value per-stock** — optionally store `face_value` on `stocks` so `fetchPayouts()` uses the correct multiplier per symbol.
 
 ---
 
 ## Session History
+
+### Session 9 — 2026-06-25
+**Goal**: Configure redirects to route all Netlify subdomain traffic to the custom domain behind Cloudflare.
+- Updated `netlify.toml` to add `[[redirects]]` rules for `psx-portfolio-tracker.netlify.app` (both `http` and `https`), permanently redirecting all matching paths to `https://psx.blackstar.io` via `:splat`.
+
+### Session 8 — 2026-06-25
+**Goal**: Prepare the app for its public subdomain `psx.blackstar.io` (SEO, social, crawler policy).
+- Added full SEO metadata to root `layout.tsx`: `metadataBase`, title template, OpenGraph + Twitter cards, robots directives, canonical, keywords.
+- Created `src/app/sitemap.ts` (`/sitemap.xml`, public routes only) and `src/app/opengraph-image.tsx` (generated 1200×630 share card via `next/og`).
+- Wrote `public/robots.txt`: fully open, with AI/LLM crawlers explicitly whitelisted; references the sitemap.
+- Enriched `public/manifest.json` with `id`/`scope`/`lang`/`dir`/`categories`; `short_name` → `PSX`.
+- Confirmed PWA icons already exist in `public/icons/` (the old "icons missing" item is resolved).
 
 ### Session 7 — 2026-06-23
 **Goal**: Implement PSX dividend payout scraper; fix planner gate strictness; fix mobile navbar.

@@ -7,3 +7,16 @@
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
+
+[[redirects]]
+  from = "https://psx-portfolio-tracker.netlify.app/*"
+  to = "https://psx.blackstar.io/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "http://psx-portfolio-tracker.netlify.app/*"
+  to = "https://psx.blackstar.io/:splat"
+  status = 301
+  force = true
+
