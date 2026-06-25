@@ -14,13 +14,62 @@ const geistMono = Geist_Mono({
   subsets: ['latin'],
 })
 
+const SITE_URL = 'https://psx.blackstar.io'
+const SITE_NAME = 'PSX Portfolio Tracker'
+const SITE_DESCRIPTION =
+  'Track and manage your Pakistan Stock Exchange (PSX) portfolio — holdings, live prices, dividends, sector allocation, and monthly investment planning.'
+
 export const metadata: Metadata = {
-  title: 'PSX Portfolio Tracker',
-  description: 'Personal Pakistan Stock Exchange portfolio management',
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: SITE_NAME,
+    template: `%s · ${SITE_NAME}`,
+  },
+  description: SITE_DESCRIPTION,
+  applicationName: SITE_NAME,
+  keywords: [
+    'PSX',
+    'Pakistan Stock Exchange',
+    'portfolio tracker',
+    'stocks',
+    'dividends',
+    'investment planner',
+    'KSE',
+    'PKR',
+  ],
+  authors: [{ name: 'Black Star' }],
+  creator: 'Black Star',
   manifest: '/manifest.json',
+  alternates: {
+    canonical: '/',
+  },
   icons: {
     icon: '/icons/icon-192x192.png',
     apple: '/icons/apple-touch-icon.png',
+  },
+  openGraph: {
+    type: 'website',
+    url: SITE_URL,
+    siteName: SITE_NAME,
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+    locale: 'en_US',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: SITE_NAME,
+    description: SITE_DESCRIPTION,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+    },
   },
   appleWebApp: {
     capable: true,
