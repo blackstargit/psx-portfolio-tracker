@@ -246,10 +246,10 @@ All tables have `created_at` and `updated_at` (auto-updated via trigger) except 
 
 ## Session Handoff
 
-**Last updated**: 2026-06-25 (Session 9)
+**Last updated**: 2026-06-26 (Session 10)
 
 ### What was done this session
-- **Subdomain Redirects** (`netlify.toml`): Configured permanent (301) redirects from `psx-portfolio-tracker.netlify.app/*` to `psx.blackstar.io/:splat` (both HTTP and HTTPS). This ensures traffic to the Netlify subdomain is forced onto the custom domain, applying Cloudflare's security policies and preventing direct bypass.
+- **Hosting migration**: Switched from Netlify to Vercel. Deleted `netlify.toml` (build config, `@netlify/plugin-nextjs`, and subdomain redirects). Vercel auto-detects Next.js — no config file required.
 
 ### Known limitations
 - Crawlers can only reach `/` and `/login` — every data page sits behind auth, so there is no public content to index beyond the landing/login. The robots/sitemap scope reflects this. Add public routes to `sitemap.ts` if a marketing page is ever introduced.
@@ -257,10 +257,10 @@ All tables have `created_at` and `updated_at` (auto-updated via trigger) except 
 - (Carried over) `fetchPayouts()` assumes Rs 10 face value for all symbols; Rs 5 / Rs 2.5 par stocks will be off by 2×/4× — correctable via manual edit.
 
 ### Current state
-App is deployed on Netlify. Quotes, search, and dividend payout history work live against PSX. Planner is in facilitator mode; mobile nav renders correctly on all pages. SEO/robots/sitemap/OG-image in place for the `psx.blackstar.io` subdomain. Netlify subdomain now redirects to the custom domain. `tsc --noEmit` is clean for all changed files (pre-existing supabase/ssr implicit-any errors are unrelated).
+App is deployed on Vercel. Quotes, search, and dividend payout history work live against PSX. Planner is in facilitator mode; mobile nav renders correctly on all pages. SEO/robots/sitemap/OG-image in place for the `psx.blackstar.io` subdomain. `tsc --noEmit` is clean for all changed files (pre-existing supabase/ssr implicit-any errors are unrelated).
 
 ### Next task
-1. **Point DNS + Netlify** at `psx.blackstar.io` (subdomain CNAME + Netlify custom domain verification), then verify in Google Search Console and add the verification tag via `metadata.verification`.
+1. **Point DNS + Vercel** at `psx.blackstar.io` (add custom domain in Vercel dashboard → get CNAME/A record → update DNS in Cloudflare), then verify in Google Search Console and add the verification tag via `metadata.verification`.
 2. **PWA service worker** — configure `next.config.ts` with `withPWA()` (icons + manifest are already ready).
 3. **Dark mode toggle** — `ThemeProvider` is already in `layout.tsx`; add a user-facing toggle in the sidebar/header.
 4. **Face value per-stock** — optionally store `face_value` on `stocks` so `fetchPayouts()` uses the correct multiplier per symbol.
@@ -268,6 +268,10 @@ App is deployed on Netlify. Quotes, search, and dividend payout history work liv
 ---
 
 ## Session History
+
+### Session 10 — 2026-06-26
+**Goal**: Migrate hosting from Netlify to Vercel.
+- Deleted `netlify.toml` (build config, `@netlify/plugin-nextjs`, subdomain redirect rules). Vercel needs no equivalent config file for a Next.js project.
 
 ### Session 9 — 2026-06-25
 **Goal**: Configure redirects to route all Netlify subdomain traffic to the custom domain behind Cloudflare.
